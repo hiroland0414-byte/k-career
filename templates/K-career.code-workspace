@@ -1,9 +1,7 @@
 {
-	"folders": [
-		{
-			"name": "K-career",
-			"path": ".."
-		}
-	],
-	"settings": {}
+    "folders": [
+        {
+            "path": ".."
+        }
+    ]
 }
