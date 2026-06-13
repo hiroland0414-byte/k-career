@@ -291,22 +291,13 @@ input#user-nickname {
             </div>
         </div>
      
-<div id="page-es-result" class="page">
-    <div id="es-pdf-content" style="background: white; color: #333; padding: 25px; border-radius: 15px; text-align: left; width:100%; box-sizing:border-box;">
-        <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
-        <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
-    </div>
-    <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:20px;">戻る</button>
-</div>
-
-<div id="page-es-result" class="page">
-    <div id="es-pdf-content" style="background: white; color: #333; padding: 25px; border-radius: 15px; text-align: left; width:100%; box-sizing:border-box;">
-        <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
-        <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
-    </div>
-    <button class="btn-next" onclick="downloadES_PDF()" style="margin-top:20px;">レポートをPDFで保存</button>
-    <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:10px;">戻る</button>
-</div>
+        <div id="page-es-result" class="page">
+            <div id="es-pdf-content" style="background: white; color: #333; padding: 25px; border-radius: 15px; text-align: left; width:100%; box-sizing:border-box;">
+                <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
+                <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
+            </div>
+            <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:20px;">戻る</button>
+        </div>
 
         <div id="page-interview-menu" class="page">
             <div class="section-label">トレーニング形式を選択</div>
@@ -1796,20 +1787,6 @@ function stopAllSpeechRecognition() {
         }
     }
 }
-function downloadES_PDF() {
-    const element = document.getElementById('es-pdf-content');
-    const opt = {
-        margin:       15,
-        filename:     'K-career_ES添削レポート.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // PDF化を実行
-    html2pdf().set(opt).from(element).save();
-}
-
 </script>
 </body>
 </html>
