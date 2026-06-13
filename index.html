@@ -837,6 +837,7 @@ async function handleInterviewActionVoice(btn) {
         if (data.status === 'success') {
             // 文字クリア・画面反映
             if (inputArea) inputArea.value = "";
+            confirmedText = "";
             addMsg("あなた", userText);
             totalTextPerTheme += userText + " ";
             if (charDisplay) {
@@ -1669,23 +1670,19 @@ recognition.onresult = function(event) {
     let finalTranscript = '';
     let interimTranscript = '';
 
-    // ★修正ポイント1: event.resultIndexからループを開始し、
-    // 確定したもの（isFinal）だけを確実に1回だけ追加する
     for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-            finalTranscript += formatTranscript(event.results[i][0].transcript);
+            let segment = formatTranscript(event.results[i][0].transcript);
+            // ★重複排除：すでにconfirmedTextに含まれている場合は追加しない
+            if (!confirmedText.includes(segment.trim())) {
+                finalTranscript += segment;
+            }
         } else {
-            // 未確定分は上書き用として毎回生成する
             interimTranscript = event.results[i][0].transcript;
         }
     }
 
-    const inputArea = document.getElementById('interview-textarea');
-    if (!inputArea) return;
-
-    // ★修正ポイント2: 確定した場合のみ confirmedText に安全に統合
     if (finalTranscript !== '') {
-        // 余計なスペースや句読点の重複を防ぐ
         confirmedText += (confirmedText.length > 0 && !/[。、\s]$/.test(confirmedText)) 
                          ? ' ' + finalTranscript 
                          : finalTranscript;
