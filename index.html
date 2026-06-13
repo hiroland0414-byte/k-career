@@ -1790,16 +1790,32 @@ function stopAllSpeechRecognition() {
 }
 function downloadES_PDF() {
     const element = document.getElementById('es-pdf-content');
-    const opt = {
-        margin:       15,
-        filename:     'K-career_ES添削レポート.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    const resultDisplay = document.getElementById('es-evaluation-result');
 
-    // PDF化を実行
-    html2pdf().set(opt).from(element).save();
+    // 1. 念のためのチェック：結果が入っているか確認
+    if (!resultDisplay || resultDisplay.innerHTML.includes("添削中")) {
+        alert("添削結果がまだ表示されていません。完了までお待ちください。");
+        return;
+    }
+
+    // 2. 0.5秒待機してから変換開始
+    // 画面描画の「ゆらぎ」を吸収します
+    setTimeout(() => {
+        const opt = {
+            margin:       15,
+            filename:     'K-career_ES添削レポート.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false, // ログを出さない
+                windowWidth: document.documentElement.offsetWidth 
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+    }, 500);
 }
 
 </script>
