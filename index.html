@@ -810,7 +810,11 @@ async function handleInterviewActionVoice(btn) {
         
         // 警告後、ボタンを復活させてマイク再開
         if (btn) btn.disabled = false;
-        setTimeout(() => { if(interviewType === 'voice') try { recognition.start(); } catch(e){} }, 4000);
+        setTimeout(() => {
+    if(interviewType === 'voice') {
+        safeStartRecognition();
+    }
+}, 4000);
         return; 
     }
 
@@ -866,7 +870,11 @@ async function handleInterviewActionVoice(btn) {
                     const nextTheme = interviewThemes[interviewStep];
                     let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
                     askQuestion(nextQ);
-                    setTimeout(() => { if(interviewType === 'voice') try { recognition.start(); } catch(e){} }, 4500);
+                    setTimeout(() => {
+    if(interviewType === 'voice') {
+        safeStartRecognition();
+    }
+}, 4000);
                 } else {
                     isTrainingMode = false;
                     finishInterview();
@@ -1651,8 +1659,20 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     
     recognition.lang = 'ja-JP';
     recognition.interimResults = true; 
-    recognition.continuous = true;     
-
+    recognition.continuous = true; 
+    
+    // ▼▼▼ ここに safeStartRecognition を追加 ▼▼▼
+    function safeStartRecognition() {
+        try { recognition.stop(); } catch(e) {}
+        setTimeout(() => {
+            try {
+                recognition.start();
+                console.log("【音声】マイク再起動成功");
+            } catch (e) {
+                console.error("【音声】再起動失敗:", e);
+            }
+        }, 500);
+    }
     // 💡 マイクが起動（再起動）した瞬間の処理
     recognition.onstart = function() {
         const inputArea = document.getElementById('interview-textarea');
@@ -1711,11 +1731,14 @@ const charDisplay = document.getElementById('current-chars');
     inputArea.scrollTop = inputArea.scrollHeight;
 };
 
-    recognition.onend = () => {
-        if (isRecording) {
+recognition.onend = () => {
+    // 録音フラグが立っている時だけ、少し間隔を空けて再開する
+    if (isRecording) {
+        setTimeout(() => {
             try { recognition.start(); } catch(e) {}
-        }
-    }; 
+        }, 500);
+    }
+};
 }
 
 // つなぎ言葉・句読点自動付与
@@ -1737,11 +1760,14 @@ function startRecording() {
             isRecording = true; // フラグをオン
             
             // ★ここを追加：再開のたびに自動ループのルールを書き込む
-            recognition.onend = () => {
-                if (isRecording) {
-                    try { recognition.start(); } catch(e) {}
-                }
-            };
+recognition.onend = () => {
+    // 録音フラグが立っている時だけ、少し間隔を空けて再開する
+    if (isRecording) {
+        setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+        }, 500);
+    }
+};
             
             recognition.start();
             console.log("マイク稼働開始");
