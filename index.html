@@ -810,11 +810,7 @@ async function handleInterviewActionVoice(btn) {
         
         // 警告後、ボタンを復活させてマイク再開
         if (btn) btn.disabled = false;
-        setTimeout(() => {
-    if(interviewType === 'voice') {
-        safeStartRecognition();
-    }
-}, 4000);
+        setTimeout(() => { if(interviewType === 'voice') try { recognition.start(); } catch(e){} }, 4000);
         return; 
     }
 
@@ -841,7 +837,6 @@ async function handleInterviewActionVoice(btn) {
         if (data.status === 'success') {
             // 文字クリア・画面反映
             if (inputArea) inputArea.value = "";
-            confirmedText = "";
             addMsg("あなた", userText);
             totalTextPerTheme += userText + " ";
             if (charDisplay) {
@@ -870,11 +865,7 @@ async function handleInterviewActionVoice(btn) {
                     const nextTheme = interviewThemes[interviewStep];
                     let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
                     askQuestion(nextQ);
-                    setTimeout(() => {
-    if(interviewType === 'voice') {
-        safeStartRecognition();
-    }
-}, 4000);
+                    setTimeout(() => { if(interviewType === 'voice') try { recognition.start(); } catch(e){} }, 4500);
                 } else {
                     isTrainingMode = false;
                     finishInterview();
@@ -1659,20 +1650,8 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     
     recognition.lang = 'ja-JP';
     recognition.interimResults = true; 
-    recognition.continuous = true; 
-    
-    // ▼▼▼ ここに safeStartRecognition を追加 ▼▼▼
-    function safeStartRecognition() {
-        try { recognition.stop(); } catch(e) {}
-        setTimeout(() => {
-            try {
-                recognition.start();
-                console.log("【音声】マイク再起動成功");
-            } catch (e) {
-                console.error("【音声】再起動失敗:", e);
-            }
-        }, 500);
-    }
+    recognition.continuous = true;     
+
     // 💡 マイクが起動（再起動）した瞬間の処理
     recognition.onstart = function() {
         const inputArea = document.getElementById('interview-textarea');
@@ -1690,26 +1669,33 @@ recognition.onresult = function(event) {
     let finalTranscript = '';
     let interimTranscript = '';
 
+    // 確定・未確定を分離
     for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-            let segment = formatTranscript(event.results[i][0].transcript);
-            // ★重複排除：すでにconfirmedTextに含まれている場合は追加しない
-            if (!confirmedText.includes(segment.trim())) {
-                finalTranscript += segment;
-            }
+            finalTranscript += formatTranscript(event.results[i][0].transcript);
         } else {
-            interimTranscript = event.results[i][0].transcript;
+            interimTranscript += event.results[i][0].transcript;
         }
     }
 
-    if (finalTranscript !== '') {
-        confirmedText += (confirmedText.length > 0 && !/[。、\s]$/.test(confirmedText)) 
-                         ? ' ' + finalTranscript 
-                         : finalTranscript;
-    }
+// 💡 recognition.onresult のブロックの一番最後の行（ } の直前）にこれを追加
+if (typeof updateInterviewCharCount === 'function') {
+    updateInterviewCharCount();
+}
 
-    // 確定分 + 未確定分 を合成
-    let displayText = confirmedText + interimTranscript;
+    const inputArea = document.getElementById('interview-textarea');
+    if (inputArea) {
+        // 1. 確定した文字があれば、保持している土台（confirmedText）に追加
+        if (finalTranscript) {
+            if (confirmedText && !confirmedText.endsWith(' ') && !confirmedText.endsWith('。') && !confirmedText.endsWith('、')) {
+                confirmedText += ' ' + finalTranscript;
+            } else {
+                confirmedText += finalTranscript;
+            }
+        }
+
+        // 2. 確定分と認識中分を合成して「最新の表示テキスト」を作成
+        let displayText = confirmedText + interimTranscript;
 
             // 医療・就活リアルタイム強制迎撃フィルター
             displayText = displayText
@@ -1726,19 +1712,19 @@ recognition.onresult = function(event) {
         inputArea.value = displayText;
 
         // 5. 文字数カウンターとスクロール処理
-const charDisplay = document.getElementById('current-chars');
-    if (charDisplay) charDisplay.innerText = inputArea.value.length;
-    inputArea.scrollTop = inputArea.scrollHeight;
-};
-
-recognition.onend = () => {
-    // 録音フラグが立っている時だけ、少し間隔を空けて再開する
-    if (isRecording) {
-        setTimeout(() => {
-            try { recognition.start(); } catch(e) {}
-        }, 500);
+        const charDisplay = document.getElementById('current-chars');
+        if (charDisplay) {
+            charDisplay.innerText = inputArea.value.length;
+        }
+        inputArea.scrollTop = inputArea.scrollHeight;
     }
 };
+
+    recognition.onend = () => {
+        if (isRecording) {
+            try { recognition.start(); } catch(e) {}
+        }
+    }; 
 }
 
 // つなぎ言葉・句読点自動付与
@@ -1760,14 +1746,11 @@ function startRecording() {
             isRecording = true; // フラグをオン
             
             // ★ここを追加：再開のたびに自動ループのルールを書き込む
-recognition.onend = () => {
-    // 録音フラグが立っている時だけ、少し間隔を空けて再開する
-    if (isRecording) {
-        setTimeout(() => {
-            try { recognition.start(); } catch(e) {}
-        }, 500);
-    }
-};
+            recognition.onend = () => {
+                if (isRecording) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
             
             recognition.start();
             console.log("マイク稼働開始");
