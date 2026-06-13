@@ -1669,30 +1669,33 @@ recognition.onresult = function(event) {
     let finalTranscript = '';
     let interimTranscript = '';
 
-    // ★修正ポイント1: event.resultIndexからループを開始し、
-    // 確定したもの（isFinal）だけを確実に1回だけ追加する
+    // 確定・未確定を分離
     for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
             finalTranscript += formatTranscript(event.results[i][0].transcript);
         } else {
-            // 未確定分は上書き用として毎回生成する
-            interimTranscript = event.results[i][0].transcript;
+            interimTranscript += event.results[i][0].transcript;
         }
     }
 
+// 💡 recognition.onresult のブロックの一番最後の行（ } の直前）にこれを追加
+if (typeof updateInterviewCharCount === 'function') {
+    updateInterviewCharCount();
+}
+
     const inputArea = document.getElementById('interview-textarea');
-    if (!inputArea) return;
+    if (inputArea) {
+        // 1. 確定した文字があれば、保持している土台（confirmedText）に追加
+        if (finalTranscript) {
+            if (confirmedText && !confirmedText.endsWith(' ') && !confirmedText.endsWith('。') && !confirmedText.endsWith('、')) {
+                confirmedText += ' ' + finalTranscript;
+            } else {
+                confirmedText += finalTranscript;
+            }
+        }
 
-    // ★修正ポイント2: 確定した場合のみ confirmedText に安全に統合
-    if (finalTranscript !== '') {
-        // 余計なスペースや句読点の重複を防ぐ
-        confirmedText += (confirmedText.length > 0 && !/[。、\s]$/.test(confirmedText)) 
-                         ? ' ' + finalTranscript 
-                         : finalTranscript;
-    }
-
-    // 確定分 + 未確定分 を合成
-    let displayText = confirmedText + interimTranscript;
+        // 2. 確定分と認識中分を合成して「最新の表示テキスト」を作成
+        let displayText = confirmedText + interimTranscript;
 
             // 医療・就活リアルタイム強制迎撃フィルター
             displayText = displayText
@@ -1709,9 +1712,12 @@ recognition.onresult = function(event) {
         inputArea.value = displayText;
 
         // 5. 文字数カウンターとスクロール処理
-const charDisplay = document.getElementById('current-chars');
-    if (charDisplay) charDisplay.innerText = inputArea.value.length;
-    inputArea.scrollTop = inputArea.scrollHeight;
+        const charDisplay = document.getElementById('current-chars');
+        if (charDisplay) {
+            charDisplay.innerText = inputArea.value.length;
+        }
+        inputArea.scrollTop = inputArea.scrollHeight;
+    }
 };
 
     recognition.onend = () => {
