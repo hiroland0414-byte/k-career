@@ -19,8 +19,9 @@ def serve_sw():
 # ==========================================
 # ⚠️ APIキー（あなたのものをそのまま維持）
 # ==========================================
-API_KEY = "AIzaSyAea19iosZbnLJXuRdJ-5Os3sX_guYXVGE"
-client = genai.Client(api_key=API_KEY)
+# Vercelに設定した GEMINI_API_KEY を読み込む
+api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 
 # 💡 修正：最新ライブラリで確実に動くモデル名に変更
 CURRENT_MODEL = "gemini-flash-latest"
