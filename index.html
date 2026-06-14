@@ -1642,15 +1642,11 @@ function drawFaceGuideline() {
 }
 
 // ===================================================
-// 🎙️ 7. 音声認識（SpeechRecognition）の大元初期化 ＆ 途中追加完全対応版
-// ===================================================
-// ===================================================
 // 🎙️ 音声認識 重複防止・状態管理改善版
 // ===================================================
 
 // 🔥【新規追加】状態管理フラグ（回答送信中は音声認識を無視する）
 let isProcessingAnswer = false;  // AI通信中はtrue（重複・飛び越し防止）
-let lastConfirmedLength = 0;     // 前回の確定文字数（interim の増減監視用）
 let lastFinalTranscript = "";    // 前回確定したテキスト（完全重複防止）
 
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1956,14 +1952,6 @@ function removeDuplicatePhrases(text) {
     }
     
     return text;
-}
-
-
-    recognition.onend = () => {
-        if (isRecording) {
-            try { recognition.start(); } catch(e) {}
-        }
-    }; 
 }
 
 // つなぎ言葉・句読点自動付与
