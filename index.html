@@ -718,7 +718,10 @@ async function handleInterviewActionText() {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-        thinkingMsg.innerHTML = `<em style="color: #aaa;">K-career 面接官が考え中...</em>`;
+        thinkingMsg.innerHTML = `
+    <div style="color: #ff4d4d; font-weight: bold; border: 1px solid #ff4d4d; padding: 5px; border-radius: 5px; display: inline-block;">
+        ⏳ K-career 面接官が考え中...
+    </div>`;
         chatContainer.appendChild(thinkingMsg);
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -900,7 +903,10 @@ async function handleInterviewActionVoice(btn) {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-        thinkingMsg.innerHTML = `<em style="color: #aaa;">K-career 面接官が考え中...</em>`;
+        thinkingMsg.innerHTML = `
+    <div style="color: #ff4d4d; font-weight: bold; border: 1px solid #ff4d4d; padding: 5px; border-radius: 5px; display: inline-block;">
+        ⏳ K-career 面接官が考え中...
+    </div>`;
         chatContainer.appendChild(thinkingMsg);
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
