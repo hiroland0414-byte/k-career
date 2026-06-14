@@ -1926,31 +1926,17 @@ async function handleInterviewActionVoice(btn) {
 // 💡 重複フレーズ除去関数
 function removeDuplicatePhrases(text) {
     if (!text || text.length < 10) return text;
-    
-    const lastPunctuation = Math.max(
-        text.lastIndexOf('。'),
-        text.lastIndexOf('、'),
-        text.lastIndexOf(' '),
-        text.lastIndexOf('　')
-    );
-    
-    const lastSentence = lastPunctuation >= 0 ? text.substring(lastPunctuation + 1) : text;
-    const beforeText = lastPunctuation >= 0 ? text.substring(0, lastPunctuation + 1) : '';
-    
+    const lastPunct = Math.max(text.lastIndexOf('。'), text.lastIndexOf('、'), text.lastIndexOf(' '), text.lastIndexOf('　'));
+    const lastSentence = lastPunct >= 0 ? text.substring(lastPunct + 1) : text;
+    const beforeText = lastPunct >= 0 ? text.substring(0, lastPunct + 1) : '';
     if (lastSentence.length >= 3) {
-        // 完全一致チェック
         const prevIndex = beforeText.lastIndexOf(lastSentence);
         if (prevIndex >= 0 && prevIndex < beforeText.length - lastSentence.length) {
             return beforeText + ' ';
         }
-        
-        // 部分重複チェック（最後の5文字）
-        const last5Chars = lastSentence.slice(-5);
-        if (last5Chars.length >= 4 && beforeText.includes(last5Chars)) {
-            return beforeText + ' ';
-        }
+        const last5 = lastSentence.slice(-5);
+        if (last5.length >= 4 && beforeText.includes(last5)) return beforeText + ' ';
     }
-    
     return text;
 }
 
@@ -1963,6 +1949,7 @@ function formatTranscript(text) {
     }
     return cleaned;
 }
+
 
 // ===================================================
 // 🛠️ 8. 独立マイク制御（関数外からいつでも安全に稼働）
