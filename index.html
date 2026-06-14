@@ -852,7 +852,7 @@ async function handleInterviewActionVoice(btn) {
                 deepDiveCount++;
                 setTimeout(() => {
                     if (interviewType === 'voice') try { recognition.start(); } catch(e){}
-                }, 4500);
+                }, 5500);
             } else {
                 // テーマ更新ロジック
                 allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
@@ -912,12 +912,12 @@ async function handleInterviewActionVoice(btn) {
                 askQuestion(data.question);
                 deepDiveCount++; 
 
-                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで4.5秒間待ってマイクを安全に再起動
-                console.log("音声モード：AI発話中のため、マイク再起動を4.5秒待機します");
+                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで5.5秒間待ってマイクを安全に再起動
+                console.log("音声モード：AI発話中のため、マイク再起動を5.5秒待機します");
                 setTimeout(() => {
                     console.log("音声モード：マイクを安全に再起動しました");
                     try { recognition.start(); } catch(e){}
-                }, 4500);
+                }, 5500);
             } else {
                 addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
                 try { recognition.start(); } catch(e){}
@@ -1642,117 +1642,130 @@ function drawFaceGuideline() {
 }
 
 // ===================================================
-// 🎙️ 音声認識 完全改善版
+// 🎙️ 音声認識 完全実装（重複防止・状態管理）
 // ===================================================
 
+// 🔥 状態管理フラグ
 let isProcessingAnswer = false;
 let lastFinalTranscript = "";
 
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR(); 
+    
     recognition.lang = 'ja-JP';
     recognition.interimResults = true; 
     recognition.continuous = true;     
 
+    // 💡 マイク起動時
     recognition.onstart = function() {
         console.log("マイク起動");
     };
 
-recognition.onresult = function(event) {
-    if (isProcessingAnswer) return;
-
-    let finalTranscript = '';
-    let interimTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-            finalTranscript += formatTranscript(event.results[i][0].transcript);
-        } else {
-            interimTranscript += event.results[i][0].transcript;
-        }
-    }
-
-    const inputArea = document.getElementById('interview-textarea');
-    if (!inputArea) return;
-
-    // ========================================
-    // 🔥【修正】重複チェック（単語レベルは外す）
-    // ========================================
-    if (finalTranscript) {
-        // ✅ チェック1: 完全一致はスキップ（OK）
-        if (finalTranscript === lastFinalTranscript) {
-            console.log("完全一致をスキップ");
+    // 🎤 音声認識メイン処理
+    recognition.onresult = function(event) {
+        // 🔥 回答送信中は音声認識を無視（深掘り飛び越し防止）
+        if (isProcessingAnswer) {
             return;
         }
-        
-        // ✅ チェック2: 同じ文が既にあるか（OK）
-        if (confirmedText.includes(finalTranscript)) {
-            console.log("既にあるテキストをスキップ:", finalTranscript);
-            lastFinalTranscript = finalTranscript;
-            return;
+
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        // 確定テキストと未確定テキストを分離
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += formatTranscript(event.results[i][0].transcript);
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
         }
-        
-        // ❌ 削除: 単語レベルのブロック（強すぎる）
-        // ✅ チェック3: 末尾10文字が重複していないか（少し緩やかに）
-        if (finalTranscript.length >= 6) {
-            const lastPart = finalTranscript.slice(-8);
-            const lastPartIndex = confirmedText.lastIndexOf(lastPart);
-            // 末尾から15文字 이내に同じ部分があれば重複
-            if (lastPartIndex >= 0 && (confirmedText.length - lastPartIndex) < 15) {
-                console.log("末尾が重複するためスキップ:", finalTranscript);
+
+        const inputArea = document.getElementById('interview-textarea');
+        if (!inputArea) return;
+
+        // ========================================
+        // 🔥 重複防止チェック
+        // ========================================
+        if (finalTranscript) {
+            // チェック1: 完全一致はスキップ
+            if (finalTranscript === lastFinalTranscript) {
+                console.log("完全一致をスキップ");
+                return;
+            }
+            
+            // チェック2: 同じ文が既にconfirmedTextにあるか
+            if (confirmedText.includes(finalTranscript)) {
+                console.log("既にあるテキストをスキップ");
                 lastFinalTranscript = finalTranscript;
                 return;
             }
+            
+            // チェック3: 末尾8文字が重複していないか（15文字 이내）
+            if (finalTranscript.length >= 6) {
+                const lastPart = finalTranscript.slice(-8);
+                const lastPartIndex = confirmedText.lastIndexOf(lastPart);
+                if (lastPartIndex >= 0 && (confirmedText.length - lastPartIndex) < 15) {
+                    console.log("末尾が重複するためスキップ");
+                    lastFinalTranscript = finalTranscript;
+                    return;
+                }
+            }
+            
+            // 全てチェック通过了ら追加
+            if (confirmedText.length > 0) {
+                const lastChar = confirmedText.slice(-1);
+                if (![' ', '。', '、'].includes(lastChar)) {
+                    confirmedText += ' ';
+                }
+            }
+            confirmedText += finalTranscript;
+            lastFinalTranscript = finalTranscript;
+            
+            // 累積テキストから直近の重複フレーズを削除
+            confirmedText = removeDuplicatePhrases(confirmedText);
         }
-        
-        // ❌ 削除: 前半5文字チェック（強すぎる）
-        
-        // ❌ 削除: 単語3回以上のブロック
-        
-        // 全てチェック通过了ら追加
-        if (confirmedText.length > 0) {
-            const lastChar = confirmedText.slice(-1);
-            if (![' ', '。', '、'].includes(lastChar)) {
-                confirmedText += ' ';
+
+        // ========================================
+        // 🔥 interimResults は表示のみ（累積しない）
+        // ========================================
+        let displayText = confirmedText;
+        if (interimTranscript && interimTranscript.length > 2) {
+            const checkLen = Math.min(10, interimTranscript.length);
+            if (!displayText.endsWith(interimTranscript.slice(-checkLen))) {
+                displayText = confirmedText + interimTranscript;
             }
         }
-        confirmedText += finalTranscript;
-        lastFinalTranscript = finalTranscript;
-    }
 
-    // interimResults は表示のみ
-    let displayText = confirmedText;
-    if (interimTranscript && interimTranscript.length > 2) {
-        const checkLen = Math.min(10, interimTranscript.length);
-        if (!displayText.endsWith(interimTranscript.slice(-checkLen))) {
-            displayText = confirmedText + interimTranscript;
+        // ========================================
+        // 🔥 医療・就活リアルタイムフィルター
+        // ========================================
+        displayText = displayText
+            .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
+            .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
+            .replace(/キリン|きりん|キー|き|g|金/g, "貴院")
+            .replace(/きいん|きーん|きん|议员/g, "貴院")
+            .replace(/以上|異常/g, "医療")
+            .replace(/ギーン|ティーン|起因|キーイン/g, "貴院")
+            .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
+            .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
+            .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
+            .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
+
+        // 画面を更新
+        inputArea.value = displayText;
+
+        // 文字数カウンター更新
+        const charDisplay = document.getElementById('current-chars');
+        if (charDisplay) charDisplay.innerText = inputArea.value.length;
+        inputArea.scrollTop = inputArea.scrollHeight;
+
+        if (typeof updateInterviewCharCount === 'function') {
+            updateInterviewCharCount();
         }
-    }
+    };
 
-    // 医療・就活フィルター
-    displayText = displayText
-        .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
-        .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
-        .replace(/キリン|きりん|キー|金/g, "貴院")
-        .replace(/きいん|きーん|きん/g, "貴院")
-        .replace(/以上|異常/g, "医療")
-        .replace(/ギーン|ティーン|起因|キーイン/g, "貴院")
-        .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
-        .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
-        .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
-        .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
-
-    inputArea.value = displayText;
-
-    const charDisplay = document.getElementById('current-chars');
-    if (charDisplay) charDisplay.innerText = inputArea.value.length;
-    inputArea.scrollTop = inputArea.scrollHeight;
-
-    if (typeof updateInterviewCharCount === 'function') updateInterviewCharCount();
-};
-
-
+    // 🔥 マイク自動再起動（処理中は停止）
     recognition.onend = function() {
         if (isRecording && !isProcessingAnswer) {
             try { recognition.start(); } catch(e) {}
@@ -1760,24 +1773,110 @@ recognition.onresult = function(event) {
     }; 
 }
 
-// 重複フレーズ除去関数
+// ===================================================
+// 🎙️ マイク開始関数（用途に応じて使い分け）
+// ===================================================
+function startRecording() {
+    if (recognition && !isRecording) {
+        try {
+            isRecording = true;
+            
+            // onend で自動再起動する設定をここで行う
+            recognition.onend = function() {
+                if (isRecording && !isProcessingAnswer) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+            
+            recognition.start();
+            console.log("マイク稼働開始");
+        } catch (e) { 
+            console.log("Recognition start error:", e); 
+        }
+    }
+}
+
+// ===================================================
+// 🎙️ マイク停止関数
+// ===================================================
+function stopRecording() {
+    if (recognition && isRecording) {
+        recognition.stop();
+        isRecording = false;
+        console.log("マイク停止");
+    }
+}
+
+// ===================================================
+// 🎙️ マイク完全停止（モード終了時）
+// ===================================================
+function stopAllSpeechRecognition() {
+    isRecording = false;
+    isProcessingAnswer = false;
+    if (typeof recognition !== 'undefined' && recognition) {
+        try { recognition.stop(); } catch(e) {}
+    }
+}
+
+// ===================================================
+// 🎙️ 面接モード終了時のクリーンアップ
+// ===================================================
+function terminateTrainingMode() {
+    console.log("モードを終了します");
+    isRecording = false;
+    isProcessingAnswer = false;
+    lastFinalTranscript = "";
+    stopAllSpeechRecognition();
+}
+
+// ===================================================
+// 🎙️ 深掘り質問開始時のバッファクリア
+// ===================================================
+function clearVoiceBuffer() {
+    confirmedText = "";
+    lastFinalTranscript = "";
+    const inputArea = document.getElementById('interview-textarea');
+    const charDisplay = document.getElementById('current-chars');
+    if (inputArea) inputArea.value = "";
+    if (charDisplay) {
+        charDisplay.innerText = "0";
+        charDisplay.style.color = "#ff4d4d";
+    }
+}
+
+// ===================================================
+// 💡 重複フレーズ除去関数
+// ===================================================
 function removeDuplicatePhrases(text) {
     if (!text || text.length < 10) return text;
-    const lastPunct = Math.max(text.lastIndexOf('。'), text.lastIndexOf('、'), text.lastIndexOf(' '), text.lastIndexOf('　'));
+    
+    const lastPunct = Math.max(
+        text.lastIndexOf('。'),
+        text.lastIndexOf('、'),
+        text.lastIndexOf(' '),
+        text.lastIndexOf('　')
+    );
+    
     const lastSentence = lastPunct >= 0 ? text.substring(lastPunct + 1) : text;
     const beforeText = lastPunct >= 0 ? text.substring(0, lastPunct + 1) : '';
+    
     if (lastSentence.length >= 3) {
         const prevIndex = beforeText.lastIndexOf(lastSentence);
         if (prevIndex >= 0 && prevIndex < beforeText.length - lastSentence.length) {
             return beforeText;
         }
         const last5 = lastSentence.slice(-5);
-        if (last5.length >= 4 && beforeText.includes(last5)) return beforeText;
+        if (last5.length >= 4 && beforeText.includes(last5)) {
+            return beforeText;
+        }
     }
+    
     return text;
 }
 
-// つなぎ言葉・句読点自動付与
+// ===================================================
+// 💡 句読点・つなぎ言葉自動付与
+// ===================================================
 function formatTranscript(text) {
     if (!text) return "";
     var cleaned = text.replace(/(ですので|ですから|ですが|なので|また|しかし|そして|さらに)/g, "$1、");
@@ -1787,25 +1886,33 @@ function formatTranscript(text) {
     return cleaned;
 }
 
+
 // ===================================================
-// 🎙️ 音声モード 送信処理（深掘り開始時に前のテキストをクリア）
+// 🎙️ 音声モード 送信処理（完成版）
 // ===================================================
 async function handleInterviewActionVoice(btn) {
     console.log("【音声モード】送信処理開始");
     
     const inputArea = document.getElementById('interview-textarea');
     const chatContainer = document.getElementById('chat-container');
+    const charDisplay = document.getElementById('current-chars');
+    
     let userText = inputArea ? inputArea.value.trim() : "";
     
     if (!userText || !chatContainer) return;
 
+    // 🔥 処理中フラグをオン（音声認識を一時停止）
     isProcessingAnswer = true;
+    
+    // 🔥 送信ボタンを無効化
     if (btn) btn.disabled = true;
 
+    // 🔥 マイク停止
     if (typeof recognition !== 'undefined' && recognition) {
         try { recognition.stop(); } catch(e) {}
     }
 
+    // 🔥 医療・就活フィルター
     userText = userText
         .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
         .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
@@ -1817,8 +1924,9 @@ async function handleInterviewActionVoice(btn) {
         .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
         .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
 
-    const charDisplay = document.getElementById('current-chars');
-
+    // ========================================
+    // 🔥 文字数制限チェック
+    // ========================================
     if ((deepDiveCount === 0 && (totalTextPerTheme.length + userText.length) < 160) || 
         (deepDiveCount > 0 && userText.length < 100)) {
         
@@ -1840,9 +1948,12 @@ async function handleInterviewActionVoice(btn) {
         return; 
     }
 
+    // ========================================
+    // 🔥 AI通信
+    // ========================================
     const currentDeepCount = deepDiveCount;
     
-    // ✅【重要】送信前にconfirmedTextをクリア（次の深掘りで前のテキストが出ない）
+    // ✅ 送信データを保存（confirmedTextはリセット前に保存）
     confirmedText = "";
     
     try {
@@ -1865,8 +1976,11 @@ async function handleInterviewActionVoice(btn) {
         const data = await response.json();
         
         if (data.status === 'success') {
+            // ✅ 回答をチャットに追加
             if (inputArea) inputArea.value = "";
             addMsg("あなた", userText);
+            
+            // ✅ totalTextPerTheme に累積
             totalTextPerTheme += userText + " ";
             
             if (charDisplay) {
@@ -1874,24 +1988,50 @@ async function handleInterviewActionVoice(btn) {
                 charDisplay.style.color = "#4CAF50";
             }
 
+            // ========================================
+            // 🔥 深掘り質問を表示（ここでリセット！）
+            // ========================================
             askQuestion(data.question);
             
             if (currentDeepCount < 3) {
+                // ✅ 深掘り質問に遷移 → リセット実行
                 deepDiveCount = currentDeepCount + 1;
                 
+                // 入力欄をクリア
+                if (inputArea) inputArea.value = "";
+                
+                // 文字カウンターを「0」にリセット（深掘りは累積ではなく単発回答）
+                if (charDisplay) {
+                    charDisplay.innerText = "0";
+                    charDisplay.style.color = "#ff4d4d"; // 赤色（未達状態）
+                }
+                
+                // 音声バッファをクリア
+                confirmedText = "";
+                
+                // AI質問の読み上げ後にマイク再開
                 setTimeout(() => {
                     isProcessingAnswer = false;
                     if (interviewType === 'voice') try { recognition.start(); } catch(e) {}
                 }, 6000);
                 
             } else {
+                // ========================================
+                // 🔥 テーマ完了 → 次のテーマへ
+                // ========================================
                 allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
                 interviewStep++;
                 deepDiveCount = 0;
                 totalTextPerTheme = "";
                 lastFinalTranscript = "";
                 
-                if (charDisplay) charDisplay.innerText = "0";
+                if (charDisplay) {
+                    charDisplay.innerText = "0";
+                    charDisplay.style.color = "#ff4d4d";
+                }
+                
+                if (inputArea) inputArea.value = "";
+                confirmedText = "";
                 
                 if (interviewStep < 3) {
                     const nextTheme = interviewThemes[interviewStep];
@@ -1899,10 +2039,6 @@ async function handleInterviewActionVoice(btn) {
                         ? "丁寧な回答ありがとうございます。次に、あなたの自己PRをお願いします。" 
                         : "お話よく分かりました。最後に、ガクチカを教えてください。";
                     askQuestion(nextQ);
-                    
-                    // ✅ テーマ移動時もテキストエリアをクリア
-                    if (inputArea) inputArea.value = "";
-                    confirmedText = "";
                     
                     setTimeout(() => {
                         isProcessingAnswer = false;
@@ -1923,7 +2059,6 @@ async function handleInterviewActionVoice(btn) {
         if (btn) btn.disabled = false;
     }
 }
-
 
 // 💡 重複フレーズ除去関数
 function removeDuplicatePhrases(text) {
