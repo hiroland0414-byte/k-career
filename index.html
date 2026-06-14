@@ -415,8 +415,9 @@ input#user-nickname {
 </div>
 
 <script>
+
 // ===================================================
-// 🎙️ 【最優先定義】面接用のリアルタイム文字数カウント関数
+// 🎙️ 【面接専用】文字数をリアルタイムに数えて「累積合計文字数」を動かす関数
 // ===================================================
 function updateInterviewCharCount() {
     const inputArea = document.getElementById('interview-textarea');
@@ -424,19 +425,33 @@ function updateInterviewCharCount() {
     
     if (!inputArea || !charDisplay) return;
 
-    const baseTextLength = (typeof totalTextPerTheme !== 'undefined' && totalTextPerTheme) ? totalTextPerTheme.length : 0;
-    const currentLen = baseTextLength + inputArea.value.length;
+    let currentLen = 0;
+
+    // 🔥【重要修正】深掘り質問中は累積を表示しない
+    if (deepDiveCount === 0) {
+        // 最初のメイン回答は累積を表示（OK）
+        const baseTextLength = (typeof totalTextPerTheme !== 'undefined' && totalTextPerTheme) ? totalTextPerTheme.length : 0;
+        currentLen = baseTextLength + inputArea.value.length;
+    } else {
+        // 深掘り質問への回答は現在の入力のみ（累積しない）
+        currentLen = inputArea.value.length;
+    }
     
+    // 画面上のカウンターを更新
     charDisplay.innerText = currentLen;
 
+    // 目標文字数に達しているかどうかで色をパッと変える
     if (typeof deepDiveCount !== 'undefined') {
         if (deepDiveCount === 0) {
+            // 最初のメイン回答：累積で160文字以上なら緑色
             charDisplay.style.color = (currentLen >= 160) ? "#4CAF50" : "#ff4d4d";
         } else {
-            charDisplay.style.color = (inputArea.value.length >= 100) ? "#4CAF50" : "#ff4d4d";
+            // 深掘り質問への回答：現在の入力が100文字以上なら緑色
+            charDisplay.style.color = (currentLen >= 100) ? "#4CAF50" : "#ff4d4d";
         }
     }
 }
+
 
 // ===================================================
 // 🔑 0. 起動時のパスワードチェック ＆ 監視の予約
@@ -967,24 +982,33 @@ function updateInterviewCharCount() {
     
     if (!inputArea || !charDisplay) return;
 
-    // 現在テキストエリアに入力されている文字数 ＋ すでに確定して積み上がっているこれまでの文字数(totalTextPerTheme)
-    const baseTextLength = (typeof totalTextPerTheme !== 'undefined' && totalTextPerTheme) ? totalTextPerTheme.length : 0;
-    const currentLen = baseTextLength + inputArea.value.length;
+    let currentLen = 0;
+
+    // 🔥【重要修正】深掘り質問中は累積を表示しない
+    if (deepDiveCount === 0) {
+        // 最初のメイン回答は累積を表示（OK）
+        const baseTextLength = (typeof totalTextPerTheme !== 'undefined' && totalTextPerTheme) ? totalTextPerTheme.length : 0;
+        currentLen = baseTextLength + inputArea.value.length;
+    } else {
+        // 深掘り質問への回答は現在の入力のみ（累積しない）
+        currentLen = inputArea.value.length;
+    }
     
-    // 画面上の <strong id="current-chars">0</strong> の中身をリアルタイムに書き換える
+    // 画面上のカウンターを更新
     charDisplay.innerText = currentLen;
 
-    // 目標文字数に達しているかどうかで文字の色をパッと変える
+    // 目標文字数に達しているかどうかで色をパッと変える
     if (typeof deepDiveCount !== 'undefined') {
         if (deepDiveCount === 0) {
-            // 最初のメイン回答は、累積で160文字以上なら緑色（#4CAF50）に、未達なら赤色に変える
+            // 最初のメイン回答：累積で160文字以上なら緑色
             charDisplay.style.color = (currentLen >= 160) ? "#4CAF50" : "#ff4d4d";
         } else {
-            // 深掘り質問に対する回答は、その場の入力欄(inputArea.value)が100文字以上なら緑色に、未達なら赤色に変える
-            charDisplay.style.color = (inputArea.value.length >= 100) ? "#4CAF50" : "#ff4d4d";
+            // 深掘り質問への回答：現在の入力が100文字以上なら緑色
+            charDisplay.style.color = (currentLen >= 100) ? "#4CAF50" : "#ff4d4d";
         }
     }
 }
+
 
 // ===================================================
 // 予約：面接画面のテキストエリアに対して「1文字打つごとに上の関数を動かす」という耳を立てる
