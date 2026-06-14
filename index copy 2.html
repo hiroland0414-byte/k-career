@@ -291,13 +291,16 @@ input#user-nickname {
             </div>
         </div>
      
-        <div id="page-es-result" class="page">
-            <div id="es-pdf-content" style="background: white; color: #333; padding: 25px; border-radius: 15px; text-align: left; width:100%; box-sizing:border-box;">
-                <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
-                <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
-            </div>
-            <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:20px;">戻る</button>
-        </div>
+<div id="page-es-result" class="page">
+    <div id="es-pdf-content" style="background: white; color: #333; padding: 25px; border-radius: 15px; text-align: left; width:100%; box-sizing:border-box;">
+        <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
+        <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
+    </div>
+    <button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" style="margin-top:20px;" disabled>
+    レポートをPDFで保存
+</button>
+    <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:10px;">戻る</button>
+</div>
 
         <div id="page-interview-menu" class="page">
             <div class="section-label">トレーニング形式を選択</div>
@@ -1207,24 +1210,24 @@ function updateSubmitButtonState() {
 }
 
 async function submitES() {
-    // 💡 【重要】送信時の最終防衛ガード
     if (!currentPath || currentPath === "") {
-        alert("進路（病院か健診センターか）が選択されていません。お手数ですが、一度前のページに戻って選択してください！");
+        alert("進路を選択してください！");
         return;
     }
     if (!currentTheme || currentTheme === "") {
-        alert("添削テーマ（志望動機など）を選択してください！");
+        alert("添削テーマを選択してください！");
         return;
     }
     
-    // ↓ここから下が、正しく選択された時だけ実行される通信処理
     const btn = document.getElementById('submit-es-btn');
+    const pdfBtn = document.getElementById('pdf-download-btn'); // PDFボタンを取得
+
     if (btn) btn.disabled = true;
+    if (pdfBtn) pdfBtn.disabled = true; // 添削中はPDFボタンを無効化
 
     const text = document.getElementById('es-textarea').value;
     const resultContainer = document.getElementById('es-evaluation-result');
     
-    // 中身をリセットして「添削中」を表示
     resultContainer.innerHTML = "<h3>添削中...</h3>";
     showPage('page-es-result'); 
 
@@ -1243,10 +1246,10 @@ async function submitES() {
         const data = await res.json();
 
         if (data.status === 'success') {
-            resultContainer.innerHTML = `
-                <div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>
-
-            `;
+            resultContainer.innerHTML = `<div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>`;
+            
+            // 添削完了したらPDFボタンを有効化！
+            if (pdfBtn) pdfBtn.disabled = false;
         } else {
             resultContainer.innerHTML = `<p>エラーが発生しました: ${data.evaluation}</p>`;
         }
@@ -1787,6 +1790,30 @@ function stopAllSpeechRecognition() {
         }
     }
 }
+function downloadES_PDF() {
+    const element = document.getElementById('es-pdf-content');
+    
+    // 💡 内容がすべて表示されているか最終確認
+    if (document.getElementById('pdf-download-btn').disabled) return;
+
+    const opt = {
+        margin:       15,
+        filename:     'K-career_ES添削レポート.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        // ★重要：これを入れると、はみ出した分を次のページへ送ってくれます
+        pagebreak:    { mode: 'avoid-all', before: '#page2el' } 
+    };
+
+    html2pdf().set(opt).from(element).save();
+}
+
 </script>
 </body>
 </html>

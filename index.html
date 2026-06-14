@@ -1665,6 +1665,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     };
 
 // 🎤 音声認識の重複・増殖防止・強制補正版
+// 🎤 音声認識の重複・増殖防止・強制補正版（改善版）
 recognition.onresult = function(event) {
     let finalTranscript = '';
     let interimTranscript = '';
@@ -1678,37 +1679,51 @@ recognition.onresult = function(event) {
         }
     }
 
-// 💡 recognition.onresult のブロックの一番最後の行（ } の直前）にこれを追加
-if (typeof updateInterviewCharCount === 'function') {
-    updateInterviewCharCount();
-}
+    if (typeof updateInterviewCharCount === 'function') {
+        updateInterviewCharCount();
+    }
 
     const inputArea = document.getElementById('interview-textarea');
     if (inputArea) {
-        // 1. 確定した文字があれば、保持している土台（confirmedText）に追加
+        // 1. 確定した文字があれば、重複チェックを経て追加
         if (finalTranscript) {
-            if (confirmedText && !confirmedText.endsWith(' ') && !confirmedText.endsWith('。') && !confirmedText.endsWith('、')) {
-                confirmedText += ' ' + finalTranscript;
-            } else {
+            // 🔥【最重要修正】重複チェック: 既にconfirmedTextの末尾に同じテキストがあるか確認
+            const isDuplicate = 
+                confirmedText.includes(finalTranscript) || 
+                (confirmedText.length > 0 && finalTranscript.length > 3 && 
+                 confirmedText.endsWith(finalTranscript));
+            
+            if (!isDuplicate) {
+                // 区切り文字を追加
+                if (confirmedText && confirmedText.length > 0 && 
+                    !confirmedText.endsWith(' ') && !confirmedText.endsWith('。') && 
+                    !confirmedText.endsWith('、')) {
+                    confirmedText += ' ';
+                }
                 confirmedText += finalTranscript;
+                
+                // 🔥【追加】confirmedText自体から直近の重複フレーズを削除
+                confirmedText = removeDuplicatePhrases(confirmedText);
             }
         }
 
-        // 2. 確定分と認識中分を合成して「最新の表示テキスト」を作成
+        // 2. 確定分と認識中分を合成
         let displayText = confirmedText + interimTranscript;
 
-            // 医療・就活リアルタイム強制迎撃フィルター
-            displayText = displayText
-                .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由").replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
-                .replace(/キリン/g, "貴院").replace(/きりん/g, "貴院").replace(/キー/g, "貴院").replace(/キ/g, "貴院").replace(/金/g, "貴院").replace(/以上/g, "医療").replace(/異常/g, "医療")
-                .replace(/きいん/g, "貴院").replace(/きーん/g, "貴院").replace(/きん/g, "貴院").replace(/議員/g, "貴院")
-                .replace(/ギーン/g, "貴院").replace(/ティーン/g, "貴院").replace(/起因/g, "貴院").replace(/キーイン/g, "貴院")
-                .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
-                .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
-                .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
-                .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
+        // 3. 医療・就活リアルタイム強制迎撃フィルター
+        displayText = displayText
+            .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
+            .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
+            .replace(/キリン/g, "貴院").replace(/きりん/g, "貴院").replace(/キー/g, "貴院")
+            .replace(/キ/g, "貴院").replace(/金/g, "貴院").replace(/以上/g, "医療").replace(/異常/g, "医療")
+            .replace(/きいん/g, "貴院").replace(/きーん/g, "貴院").replace(/きん/g, "貴院").replace(/议员/g, "貴院")
+            .replace(/ギーン/g, "貴院").replace(/ティーン/g, "貴院").replace(/起因/g, "貴院").replace(/キーイン/g, "貴院")
+            .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
+            .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
+            .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
+            .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
 
-// 4. 画面を更新
+        // 4. 画面を更新
         inputArea.value = displayText;
 
         // 5. 文字数カウンターとスクロール処理
@@ -1719,6 +1734,40 @@ if (typeof updateInterviewCharCount === 'function') {
         inputArea.scrollTop = inputArea.scrollHeight;
     }
 };
+
+// 🔥【新規追加】重複フレーズ除去関数
+function removeDuplicatePhrases(text) {
+    if (!text || text.length < 10) return text;
+    
+    // 最後の区切り位置を探す（句読点またはスペース）
+    const lastPunctuation = Math.max(
+        text.lastIndexOf('。'),
+        text.lastIndexOf('、'),
+        text.lastIndexOf(' '),
+        text.lastIndexOf('　')
+    );
+    
+    // 最後の文を取得
+    const lastSentence = lastPunctuation >= 0 ? text.substring(lastPunctuation + 1) : text;
+    const beforeText = lastPunctuation >= 0 ? text.substring(0, lastPunctuation + 1) : '';
+    
+    // 最後の文が3文字以上で重複チェック
+    if (lastSentence.length >= 3) {
+        // 完全一致チェック: 前の部分に同じ文があるか
+        const prevIndex = beforeText.lastIndexOf(lastSentence);
+        if (prevIndex >= 0 && prevIndex < beforeText.length - lastSentence.length) {
+            return text; // 重複を削除（何も追加しない）
+        }
+        
+        // 部分重複チェック: 最後の5文字が前にあるか
+        const last5Chars = lastSentence.slice(-5);
+        if (last5Chars.length >= 4 && beforeText.includes(last5Chars)) {
+            return text; // 部分重複も削除
+        }
+    }
+    
+    return text;
+}
 
     recognition.onend = () => {
         if (isRecording) {
