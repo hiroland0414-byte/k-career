@@ -1644,6 +1644,15 @@ function drawFaceGuideline() {
 // ===================================================
 // 🎙️ 7. 音声認識（SpeechRecognition）の大元初期化 ＆ 途中追加完全対応版
 // ===================================================
+// ===================================================
+// 🎙️ 音声認識 重複防止・状態管理改善版
+// ===================================================
+
+// 🔥【新規追加】状態管理フラグ（回答送信中は音声認識を無視する）
+let isProcessingAnswer = false;  // AI通信中はtrue（重複・飛び越し防止）
+let lastConfirmedLength = 0;     // 前回の確定文字数（interim の増減監視用）
+let lastFinalTranscript = "";    // 前回確定したテキスト（完全重複防止）
+
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     recognition = new SpeechRecognition(); 
@@ -1652,65 +1661,81 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition.interimResults = true; 
     recognition.continuous = true;     
 
-    // 💡 マイクが起動（再起動）した瞬間の処理
+    // 💡 マイク起動時の処理
     recognition.onstart = function() {
-        const inputArea = document.getElementById('interview-textarea');
-        if (inputArea && inputArea.value.trim() !== "") {
-            // 🔥【最重要】文字数未達で画面に文字が残っている場合は、その文字を音声の「土台」としてそのまま引き継ぐ！
-            confirmedText = inputArea.value;
-        } else {
-            confirmedText = ""; 
-        }
-        console.log("マイク起動：現在の土台文字 ➔", confirmedText);
+        console.log("マイク起動");
     };
 
-// 🎤 音声認識の重複・増殖防止・強制補正版
-// 🎤 音声認識の重複・増殖防止・強制補正版（改善版）
-recognition.onresult = function(event) {
-    let finalTranscript = '';
-    let interimTranscript = '';
-
-    // 確定・未確定を分離
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-            finalTranscript += formatTranscript(event.results[i][0].transcript);
-        } else {
-            interimTranscript += event.results[i][0].transcript;
+    // 🎤 音声認識メイン処理（完全書き直し）
+    recognition.onresult = function(event) {
+        // 🔥【重要】回答送信中は音声認識結果を無視（深掘り飛び越し防止）
+        if (isProcessingAnswer) {
+            console.log("回答処理中のため、音声認識を一時無視します");
+            return;
         }
-    }
 
-    if (typeof updateInterviewCharCount === 'function') {
-        updateInterviewCharCount();
-    }
+        let finalTranscript = '';
+        let interimTranscript = '';
 
-    const inputArea = document.getElementById('interview-textarea');
-    if (inputArea) {
-        // 1. 確定した文字があれば、重複チェックを経て追加
-        if (finalTranscript) {
-            // 🔥【最重要修正】重複チェック: 既にconfirmedTextの末尾に同じテキストがあるか確認
-            const isDuplicate = 
-                confirmedText.includes(finalTranscript) || 
-                (confirmedText.length > 0 && finalTranscript.length > 3 && 
-                 confirmedText.endsWith(finalTranscript));
-            
-            if (!isDuplicate) {
-                // 区切り文字を追加
-                if (confirmedText && confirmedText.length > 0 && 
-                    !confirmedText.endsWith(' ') && !confirmedText.endsWith('。') && 
-                    !confirmedText.endsWith('、')) {
-                    confirmedText += ' ';
-                }
-                confirmedText += finalTranscript;
-                
-                // 🔥【追加】confirmedText自体から直近の重複フレーズを削除
-                confirmedText = removeDuplicatePhrases(confirmedText);
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += formatTranscript(event.results[i][0].transcript);
+            } else {
+                interimTranscript += event.results[i][0].transcript;
             }
         }
 
-        // 2. 確定分と認識中分を合成
-        let displayText = confirmedText + interimTranscript;
+        const inputArea = document.getElementById('interview-textarea');
+        if (!inputArea) return;
 
-        // 3. 医療・就活リアルタイム強制迎撃フィルター
+        // ========================================
+        // 🔥【修正1】確定テキストの重複防止
+        // ========================================
+        if (finalTranscript) {
+            // 完全一致チェック（前回確定分と同じなら追加しない）
+            const isExactDuplicate = (finalTranscript === lastFinalTranscript);
+            
+            // 部分重複チェック（長いフレーズの最後の10文字が前にあるか）
+            const lastPart = finalTranscript.slice(-10);
+            const isPartialDuplicate = (lastPart.length >= 6 && confirmedText.includes(lastPart));
+            
+            // 重複がない場合のみ追加
+            if (!isExactDuplicate && !isPartialDuplicate) {
+                // 区切り文字の追加
+                if (confirmedText.length > 0) {
+                    const lastChar = confirmedText.slice(-1);
+                    if (![' ', '。', '、', '、'].includes(lastChar)) {
+                        confirmedText += ' ';
+                    }
+                }
+                confirmedText += finalTranscript;
+                lastFinalTranscript = finalTranscript; // 前回値を更新
+                
+                // 累積テキストから直近の重複フレーズを削除
+                confirmedText = removeDuplicatePhrases(confirmedText);
+            } else {
+                console.log("重複テキストをスキップ:", finalTranscript);
+            }
+        }
+
+        // ========================================
+        // 🔥【修正2】interimResults は表示のみ（累積しない）
+        // ========================================
+        // interim は確定テキストの後に繋げない（重複の原因）
+        // 表示のみに使い、確定テキストは confirmedText から取得
+        let displayText = confirmedText;
+        
+        // interim は現在の認識中のみ表示（確定には加えない）
+        // → ただし、短すぎる interim はノイズなのでスキップ
+        if (interimTranscript && interimTranscript.length > 2) {
+            // interim が confirmedText の末尾と重複しているかチェック
+            const lastInterim = interimTranscript.slice(-15);
+            if (!displayText.endsWith(lastInterim)) {
+                displayText = confirmedText + interimTranscript;
+            }
+        }
+
+        // 医療・就活リアルタイム強制迎撃フィルター
         displayText = displayText
             .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
             .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
@@ -1723,23 +1748,189 @@ recognition.onresult = function(event) {
             .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
             .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
 
-        // 4. 画面を更新
         inputArea.value = displayText;
 
-        // 5. 文字数カウンターとスクロール処理
+        // 文字数カウンター更新
         const charDisplay = document.getElementById('current-chars');
         if (charDisplay) {
             charDisplay.innerText = inputArea.value.length;
         }
         inputArea.scrollTop = inputArea.scrollHeight;
-    }
-};
 
-// 🔥【新規追加】重複フレーズ除去関数
+        if (typeof updateInterviewCharCount === 'function') {
+            updateInterviewCharCount();
+        }
+    };
+
+    // 🔥【修正3】自動再起動の制御を変更（questions中は再起動しない）
+    recognition.onend = function() {
+        // AI質問中は自動再起動を停止（これが飛び越しの主要原因）
+        if (isRecording && !isProcessingAnswer) {
+            try { recognition.start(); } catch(e) {}
+        }
+    }; 
+}
+
+// ===================================================
+// 🎙️ 【B面】面接トレーニング：音声入力モード専用（状態管理改善版）
+// ===================================================
+async function handleInterviewActionVoice(btn) {
+    console.log("【音声モード】送信処理開始");
+    
+    const inputArea = document.getElementById('interview-textarea');
+    const chatContainer = document.getElementById('chat-container');
+    let userText = inputArea ? inputArea.value.trim() : "";
+    
+    if (!userText || !chatContainer) return;
+
+    // 1. 状態フラグをオン（この間、音声認識を無視する）
+    isProcessingAnswer = true;
+    
+    // 2. 送信ボタンを無効化
+    if (btn) btn.disabled = true;
+
+    // 3. マイク停止
+    if (typeof recognition !== 'undefined' && recognition) {
+        try { recognition.stop(); } catch(e) {}
+    }
+
+    // 4. 医療・就活リアルタイム強制補正
+    userText = userText
+        .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由").replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
+        .replace(/キリン/g, "貴院").replace(/きりん/g, "貴院").replace(/キー/g, "貴院").replace(/キ/g, "貴院")
+        .replace(/きいん/g, "貴院").replace(/きーん/g, "貴院").replace(/きん/g, "貴院").replace(/议员/g, "貴院").replace(/金/g, "貴院").replace(/以上/g, "医療").replace(/異常/g, "医療")
+        .replace(/ギーン/g, "貴院").replace(/ティーン/g, "貴院").replace(/起因/g, "貴院").replace(/キーイン/g, "貴院")
+        .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
+        .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
+        .replace(/使用/g, "志望").replace(/認証/g, "臨床").replace(/事故/g, "自己").replace(/制度/g, "精度")
+        .replace(/投資/g, "通し").replace(/事業/g, "治療").replace(/地震/g, "自身");
+
+    const charDisplay = document.getElementById('current-chars');
+
+    // 5. 文字数制限チェック
+    if ((deepDiveCount === 0 && (totalTextPerTheme.length + userText.length) < 160) || 
+        (deepDiveCount > 0 && userText.length < 100)) {
+        
+        if (charDisplay) charDisplay.style.color = "#ff4d4d";
+        if (inputArea) inputArea.value = userText;
+        confirmedText = userText;
+
+        const msg = deepDiveCount === 0 
+            ? `（現在 ${totalTextPerTheme.length + userText.length}文字）最初の回答としては少し短いです。あと ${160 - (totalTextPerTheme.length + userText.length)} 文字程度具体的に付け足してください。`
+            : `（今回の回答：${userText.length}文字）深掘りに対する回答としては具体性が不足しています。あと ${100 - userText.length} 文字以上詳しくお答えください。`;
+        
+        askQuestion(msg);
+        
+        // ⚠️ 警告後は少し待ってからマイク再開（質問が読み上げられる間待つ）
+        if (btn) btn.disabled = false;
+        setTimeout(() => {
+            isProcessingAnswer = false;  // 処理完了フラグ解除
+            if (interviewType === 'voice') {
+                try { recognition.start(); } catch(e) {}
+            }
+        }, 5000);  // 5秒待ってから再開
+        
+        return; 
+    }
+
+    // 6. AI通信
+    try {
+        const nicknameElement = document.getElementById('user-nickname');
+        const currentDeepCount = deepDiveCount;  // 現在の深掘り回数を保存
+        
+        const payload = {
+            text: userText, 
+            step: deepDiveCount,
+            path: interviewPath || "病院（技師）",
+            theme: interviewThemes ? interviewThemes[interviewStep] : "志望動機",
+            answer: totalTextPerTheme + userText + " ",
+            nickname: nicknameElement ? nicknameElement.value : "学生"
+        };
+
+        const response = await fetch('/api/interview_deepdive', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // 文字クリア・画面反映
+            if (inputArea) inputArea.value = "";
+            addMsg("あなた", userText);
+            totalTextPerTheme += userText + " ";
+            if (charDisplay) {
+                charDisplay.innerText = totalTextPerTheme.length;
+                charDisplay.style.color = "#4CAF50";
+            }
+
+            // 🔥【重要修正】質問表示・読み上げ
+            askQuestion(data.question);
+            
+            // 🔥【修正】深掘り回数の管理をここで统一して行う
+            if (currentDeepCount < 3) {
+                deepDiveCount = currentDeepCount + 1;
+                console.log(`深掘り ${deepDiveCount}/3 に更新`);
+                
+                // AI質問が読み上げ終わるまで待機（この間は音声認識を無視）
+                setTimeout(() => {
+                    isProcessingAnswer = false;  // 処理完了フラグ解除
+                    if (interviewType === 'voice') {
+                        try { recognition.start(); } catch(e) {}
+                    }
+                }, 6000);  // 6秒待機（質問の読み上げ時間）
+                
+            } else {
+                // 深掘り3回完了 → テーマ移動
+                allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
+                interviewStep++;
+                deepDiveCount = 0;
+                totalTextPerTheme = "";
+                lastFinalTranscript = "";  // テーマ変更時にリセット
+                
+                if (charDisplay) charDisplay.innerText = "0";
+                
+                if (interviewStep < 3) {
+                    const nextTheme = interviewThemes[interviewStep];
+                    let nextQ = (nextTheme === "自己PR") 
+                        ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" 
+                        : "お話よく分かりました。最後に、ガクチカを教えてください。";
+                    askQuestion(nextQ);
+                    
+                    // テーマ移動時の質問読み上げ待機
+                    setTimeout(() => {
+                        isProcessingAnswer = false;
+                        if (interviewType === 'voice') {
+                            try { recognition.start(); } catch(e) {}
+                        }
+                    }, 6000);
+                    
+                } else {
+                    // 全テーマ完了
+                    isTrainingMode = false;
+                    finishInterview();
+                }
+            }
+        }
+    } catch (err) {
+        console.error("詳細エラー:", err);
+        addMsg("AI", "通信に失敗しました。詳細:" + err.message);
+        
+        // エラー時も必ずフラグを解除
+        isProcessingAnswer = false;
+        if (interviewType === 'voice') {
+            try { recognition.start(); } catch(e) {}
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// 💡 重複フレーズ除去関数
 function removeDuplicatePhrases(text) {
     if (!text || text.length < 10) return text;
     
-    // 最後の区切り位置を探す（句読点またはスペース）
     const lastPunctuation = Math.max(
         text.lastIndexOf('。'),
         text.lastIndexOf('、'),
@@ -1747,27 +1938,26 @@ function removeDuplicatePhrases(text) {
         text.lastIndexOf('　')
     );
     
-    // 最後の文を取得
     const lastSentence = lastPunctuation >= 0 ? text.substring(lastPunctuation + 1) : text;
     const beforeText = lastPunctuation >= 0 ? text.substring(0, lastPunctuation + 1) : '';
     
-    // 最後の文が3文字以上で重複チェック
     if (lastSentence.length >= 3) {
-        // 完全一致チェック: 前の部分に同じ文があるか
+        // 完全一致チェック
         const prevIndex = beforeText.lastIndexOf(lastSentence);
         if (prevIndex >= 0 && prevIndex < beforeText.length - lastSentence.length) {
-            return text; // 重複を削除（何も追加しない）
+            return beforeText + ' ';
         }
         
-        // 部分重複チェック: 最後の5文字が前にあるか
+        // 部分重複チェック（最後の5文字）
         const last5Chars = lastSentence.slice(-5);
         if (last5Chars.length >= 4 && beforeText.includes(last5Chars)) {
-            return text; // 部分重複も削除
+            return beforeText + ' ';
         }
     }
     
     return text;
 }
+
 
     recognition.onend = () => {
         if (isRecording) {
