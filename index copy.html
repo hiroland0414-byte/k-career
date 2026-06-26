@@ -190,7 +190,7 @@ input#user-nickname {
         
         <div class="input-hint" style="margin-bottom:25px; background:rgba(255,255,255,0.1); border-left:4px solid #FFEE58; color:#fff;">
             <strong>ようこそ、K-careerへ！</strong><br>
-            このアプリは、診療放射線技師や看護師を目指す学生のための、AI面接・ES添削トレーニングツールです。<br>presented by Hiroshi Koyama
+            このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリで自信の考えを整理してから、対面での練習をおこなうと、より効果的です。<br>presented by Hiroshi Koyama
         </div>
 
         <div id="start-area">
@@ -511,7 +511,7 @@ let recognizedText = "";
 let confirmedText = "";     // 🔥【重要】確定した音声データを保持する裏のグローバル倉庫
 
 // 定数
-const futureQs = ["１．医療職（放射線技師/看護師）を目指した理由は？", "２．１０年後の自身の在りたい姿は？", "３．大切にしていることは何ですか？", "４．あなたの理想の職場環境は？", "５．これから伸ばしたいことは？"];
+const futureQs = ["１．将来どのような人でありたいと思いますか？", "２．大切にしたい価値観はなんですか？", "３．その考えはどのような社会の場面で活かされると思いますか？", "４．これからどんな経験をしてみたいですか？", "５．その機会を広げるためにどんな行動をしようと思いますか？"];
 const interviewThemes = ["志望動機", "自己PR", "ガクチカ"];
 
 // ===================================================
@@ -718,7 +718,10 @@ async function handleInterviewActionText() {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-        thinkingMsg.innerHTML = `<em style="color: #aaa;">K-career 面接官が考え中...</em>`;
+thinkingMsg.innerHTML = `
+    <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
+        ⏳ K-career 面接官が考え中...
+    </div>`;
         chatContainer.appendChild(thinkingMsg);
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -900,7 +903,10 @@ async function handleInterviewActionVoice(btn) {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-        thinkingMsg.innerHTML = `<em style="color: #aaa;">K-career 面接官が考え中...</em>`;
+thinkingMsg.innerHTML = `
+    <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
+        ⏳ K-career 面接官が考え中...
+    </div>`;
         chatContainer.appendChild(thinkingMsg);
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
