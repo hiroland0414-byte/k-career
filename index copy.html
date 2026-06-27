@@ -190,7 +190,7 @@ input#user-nickname {
         
         <div class="input-hint" style="margin-bottom:25px; background:rgba(255,255,255,0.1); border-left:4px solid #FFEE58; color:#fff;">
             <strong>ようこそ、K-careerへ！</strong><br>
-            このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリで自信の考えを整理してから、対面での練習をおこなうと、より効果的です。<br>presented by Hiroshi Koyama
+            このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリであなたの考えを整理してから対面での練習をおこなうと、より効果的です。一緒にがんばりましょう！<br>presented by Hiroshi Koyama
         </div>
 
         <div id="start-area">
@@ -242,8 +242,8 @@ input#user-nickname {
         <div id="page-es-select" class="page">
             <div class="section-label">志望先を選択</div>
             <button class="pill-button" onclick="selectPath(this, '病院（放射線技師）')"><img src="icon-rt.png" class="btn-icon"> 病院（放射線技師）</button>
-            <button class="pill-button" onclick="selectPath(this, '病院（看護師）')"><img src="icon-ns.png" class="btn-icon"> 病院（看護師）</button>
             <button class="pill-button" onclick="selectPath(this, '健診センター（技師）')"><img src="icon-center.png" class="btn-icon"> 健診センター（技師）</button>
+            <button class="pill-button" onclick="selectPath(this, '病院（看護師）')"><img src="icon-ns.png" class="btn-icon"> 病院（看護師）</button>
             <button class="btn-back" onclick="showPage('page-top')" style="margin-top:20px;">戻る</button>
         </div>
 
@@ -322,16 +322,16 @@ input#user-nickname {
         <div id="page-interview-facility" class="page">
             <div class="section-label">志望職種を選択</div>
             <button class="pill-button" onclick="setInterviewPath('病院（放射線技師）')"><img src="icon-rt.png" class="btn-icon"> 病院（放射線技師）</button>
-            <button class="pill-button" onclick="setInterviewPath('病院（看護師）')"><img src="icon-ns.png" class="btn-icon"> 病院（看護師）</button>
             <button class="pill-button" onclick="setInterviewPath('健診センター（技師）')"><img src="icon-center.png" class="btn-icon"> 健診センター（技師）</button>
+            <button class="pill-button" onclick="setInterviewPath('病院（看護師）')"><img src="icon-ns.png" class="btn-icon"> 病院（看護師）</button>
             <button class="btn-back" onclick="showPage('page-interview-menu')" style="margin-top:20px;">戻る</button>
         </div>
 
 <div id="page-interview-chat" class="page">
     <div class="interview-path-row" style="width: 100%; display: flex; gap: 8px; justify-content: center; margin-bottom: 15px;">
         <button class="pill-button-s" onclick="selectInterviewPath('病院（技師）', this)">病院（技師）</button>
-        <button class="pill-button-s" onclick="selectInterviewPath('病院（看護）', this)">病院（看護）</button>
         <button class="pill-button-s" onclick="selectInterviewPath('健診（技師）', this)">健診（技師）</button>
+        <button class="pill-button-s" onclick="selectInterviewPath('病院（看護）', this)">病院（看護）</button>
     </div>
 
     <div id="interview-mode-status" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 10px; font-size: 14px; font-weight: bold; display: none; text-align: center; box-sizing: border-box;"></div>

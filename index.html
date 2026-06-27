@@ -312,9 +312,9 @@ input#user-nickname {
         <div class="input-hint">
         ⌨️ <b>文字モード</b>：場所を選ばず、じっくり文章を考えながら練習できます。<br>
         </div>
-            <button class="pill-button" onclick="setInterviewMode('voice')">🎤 面接トレーニング（音声入力）/開発中</button>
+            <button class="pill-button" onclick="setInterviewMode('voice')">🎤 面接トレーニング（音声入力）</button>
         <div class="input-hint">
-        🎤 <b>音声モード</b>：K-career が声で質問します。本番さながらの緊張感で練習できます。 【開発中】<br>
+        🎤 <b>音声モード</b>：K-career が声で質問します。本番さながらの緊張感で練習できます。<br>
         </div>
             <button class="btn-back" onclick="terminateTrainingMode(); showPage('page-top');" style="margin-top:20px;">戻る</button>
         </div>
@@ -452,7 +452,6 @@ function updateInterviewCharCount() {
     }
 }
 
-
 // ===================================================
 // 🔑 0. 起動時のパスワードチェック ＆ 監視の予約
 // ===================================================
@@ -553,7 +552,7 @@ function speakText(text) {
     const uttr = new SpeechSynthesisUtterance();
     uttr.text = text;
     uttr.lang = 'ja-JP';
-    uttr.rate = 1.2; 
+    uttr.rate = 1.4; 
     uttr.pitch = 1.0;
 
     uttr.onend = function() {
@@ -718,7 +717,7 @@ async function handleInterviewActionText() {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-thinkingMsg.innerHTML = `
+        thinkingMsg.innerHTML = `
     <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
         ⏳ K-career 面接官が考え中...
     </div>`;
@@ -802,7 +801,7 @@ async function handleInterviewActionVoice(btn) {
     // 3. 医療・就活リアルタイム強制補正
     userText = userText
         .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由").replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
-        .replace(/キリン/g, "貴院").replace(/きりん/g, "貴院").replace(/キー/g, "貴院").replace(/キ/g, "貴院")
+        .replace(/キリン/g, "貴院").replace(/きりん/g, "貴院").replace(/キー/g, "貴院")
         .replace(/きいん/g, "貴院").replace(/きーん/g, "貴院").replace(/きん/g, "貴院").replace(/議員/g, "貴院").replace(/金/g, "貴院").replace(/以上/g, "医療").replace(/異常/g, "医療")
         .replace(/ギーン/g, "貴院").replace(/ティーン/g, "貴院").replace(/起因/g, "貴院").replace(/キーイン/g, "貴院")
         .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
@@ -813,7 +812,7 @@ async function handleInterviewActionVoice(btn) {
     const charDisplay = document.getElementById('current-chars');
 
     // 4. 文字数制限チェック
-    if ((deepDiveCount === 0 && (totalTextPerTheme.length + userText.length) < 160) || 
+        if ((deepDiveCount === 0 && (totalTextPerTheme.length + userText.length) < 160) || 
         (deepDiveCount > 0 && userText.length < 100)) {
         
         if (charDisplay) charDisplay.style.color = "#ff4d4d";
@@ -868,9 +867,6 @@ async function handleInterviewActionVoice(btn) {
             // ステップ更新
             if (deepDiveCount < 3) {
                 deepDiveCount++;
-                setTimeout(() => {
-                    if (interviewType === 'voice') try { recognition.start(); } catch(e){}
-                }, 5500);
             } else {
                 // テーマ更新ロジック
                 allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
@@ -883,7 +879,6 @@ async function handleInterviewActionVoice(btn) {
                     const nextTheme = interviewThemes[interviewStep];
                     let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
                     askQuestion(nextQ);
-                    setTimeout(() => { if(interviewType === 'voice') try { recognition.start(); } catch(e){} }, 4500);
                 } else {
                     isTrainingMode = false;
                     finishInterview();
@@ -903,7 +898,7 @@ async function handleInterviewActionVoice(btn) {
     if (deepDiveCount < 3) {
         const thinkingMsg = document.createElement('div');
         thinkingMsg.id = "thinking-indicator";
-thinkingMsg.innerHTML = `
+        thinkingMsg.innerHTML = `
     <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
         ⏳ K-career 面接官が考え中...
     </div>`;
@@ -932,13 +927,6 @@ thinkingMsg.innerHTML = `
             if (data.status === "success") {
                 askQuestion(data.question);
                 deepDiveCount++; 
-
-                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで5.5秒間待ってマイクを安全に再起動
-                console.log("音声モード：AI発話中のため、マイク再起動を5.5秒待機します");
-                setTimeout(() => {
-                    console.log("音声モード：マイクを安全に再起動しました");
-                    try { recognition.start(); } catch(e){}
-                }, 5500);
             } else {
                 addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
                 try { recognition.start(); } catch(e){}
@@ -965,14 +953,6 @@ thinkingMsg.innerHTML = `
             const nextTheme = interviewThemes[interviewStep];
             let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
             askQuestion(nextQ);
-
-            // テーマ移動時の質問の読み上げが終わるまで4.5秒待ってからマイクを起動
-            setTimeout(() => {
-    // 💡 現在も音声モード（interviewType === 'voice'）の場合のみ再開する
-    if (interviewType === 'voice') { 
-        try { recognition.start(); } catch(e){}
-    }
-}, 4500);
         } else {
             isTrainingMode = false;
             finishInterview(); 
@@ -1351,7 +1331,6 @@ async function prepareNonVerbal() {
     }
 }
 
-// 4. 音声解析関数（音量データのみを収集・増幅版）
 // 4. 音声解析関数（GainNodeによる感度ブースト付き）
 async function startAudioAnalysis(stream) {
     if (typeof nvAudioCtx !== 'undefined' && nvAudioCtx && nvAudioCtx.state !== 'closed') {
@@ -1773,8 +1752,8 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         displayText = displayText
             .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
             .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
-            .replace(/キリン|きりん|キー|き|g|金/g, "貴院")
-            .replace(/きいん|きーん|きん|议员/g, "貴院")
+            .replace(/キリン|きりん|キー|金/g, "貴院")
+            .replace(/きいん|きーん|きん/g, "貴院")
             .replace(/以上|異常/g, "医療")
             .replace(/ギーン|ティーン|起因|キーイン/g, "貴院")
             .replace(/き いん/g, "貴院").replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
@@ -1946,8 +1925,8 @@ async function handleInterviewActionVoice(btn) {
     userText = userText
         .replace(/死亡動機/g, "志望動機").replace(/死亡理由/g, "志望理由")
         .replace(/死亡先/g, "志望先").replace(/死亡/g, "志望")
-        .replace(/キリン|きりん|キー|き|g/g, "貴院").replace(/金/g, "貴院")
-        .replace(/きいん|きーん|きん|议员/g, "貴院").replace(/以上|異常/g, "医療")
+        .replace(/キリン|きりん|キー/g, "貴院").replace(/金/g, "貴院")
+        .replace(/きいん|きーん|きん/g, "貴院").replace(/以上|異常/g, "医療")
         .replace(/ギーン|ティーン|起因|キーイン/g, "貴院").replace(/き いん/g, "貴院")
         .replace(/提言/g, "低減").replace(/義歯/g, "技師").replace(/伝わり/g, "携わり")
         .replace(/分離/g, "分類").replace(/制度向上/g, "精度向上").replace(/養子/g, "陽子").replace(/指導/g, "志望")
