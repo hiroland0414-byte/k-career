@@ -180,8 +180,17 @@ input#user-nickname {
             <h2>K-career 認証</h2>
             <p>入室用パスワードを入力してください</p>
             <input type="password" id="pass-input" style="padding:10px; border-radius:5px; border:none; width:80%; max-width:200px;">
-            <button onclick="verifyPassword()" style="padding:10px 20px; border-radius:5px; border:none; background:#FFF9C4; font-weight:bold; cursor:pointer;">ログイン</button>
+            <!-- ボタンの style属性の中に margin-top を追加 -->
+        <button onclick="verifyPassword()" style="padding:10px 20px; border-radius:5px; border:none; background:#FFF9C4; font-weight:bold; cursor:pointer; margin-top: 20px;">
+         ログイン
+        </button>
         </div>
+
+                <div class="input-hint" style="margin-bottom:25px; background:rgba(255,255,255,0.1); border-left:4px solid #FFEE58; color:#fff;">
+            <strong>ようこそ、K-careerへ！</strong><br>
+            このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリであなたの考えを整理してから対面での練習をおこなうと、より効果的です。一緒にがんばりましょう！<br>presented by Hiroshi Koyama
+        </div>
+
     </div>
 <div id="future-result-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:1000; overflow-y:auto; padding:20px;">
     <div id="future-report-content" class="report-body">
