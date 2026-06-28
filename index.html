@@ -175,6 +175,14 @@ input#user-nickname {
     }
 </script>
 <body>
+<div id="password-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#001A4D; z-index:99999; display:flex; justify-content:center; align-items:center; color:white; padding:20px; box-sizing:border-box;">
+        <div style="text-align:center;">
+            <h2>K-career 認証</h2>
+            <p>入室用パスワードを入力してください</p>
+            <input type="password" id="pass-input" style="padding:10px; border-radius:5px; border:none; width:80%; max-width:200px;">
+            <button onclick="verifyPassword()" style="padding:10px 20px; border-radius:5px; border:none; background:#FFF9C4; font-weight:bold; cursor:pointer;">ログイン</button>
+        </div>
+    </div>
 <div id="future-result-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:1000; overflow-y:auto; padding:20px;">
     <div id="future-report-content" class="report-body">
         </div>
@@ -2191,6 +2199,19 @@ function downloadES_PDF() {
 
     html2pdf().set(opt).from(element).save();
 }
+
+// パスワード認証関数
+function verifyPassword() {
+    const input = document.getElementById('pass-input').value;
+    const correctPassword = "kyoto2026"; // 任意のパスワードに変更してください
+
+    if (input === correctPassword) {
+        document.getElementById('password-overlay').style.display = 'none';
+    } else {
+        alert("パスワードが違います");
+    }
+}
+
 
 </script>
 </body>
