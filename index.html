@@ -517,30 +517,32 @@ const interviewThemes = ["志望動機", "自己PR", "ガクチカ"];
 // 🌐 2. 共通・画面遷移 ＆ 音声読み上げ
 // ===================================================
 function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const targetPage = document.getElementById(id);
-    if (targetPage) targetPage.classList.add('active');
-    
-    window.speechSynthesis.cancel();
-}
-function showPage(id) {
-    // どの画面に移動するにしても、まずは今動いているモードを終了させる
     terminateTrainingMode();
 
-    // 画面遷移の処理
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
     const targetPage = document.getElementById(id);
     if (targetPage) targetPage.classList.add('active');
-    
+
     window.speechSynthesis.cancel();
 }
 
 function addMsg(sender, text) {
+
+    // 音声モードだけ非表示
+    if (interviewType === 'voice' && isTrainingMode) {
+        return;
+    }
+
     const container = document.getElementById('chat-container');
     if (!container) return;
+
     const msg = document.createElement('div');
     msg.style.marginBottom = "15px";
-    msg.innerHTML = `<strong>${sender}:</strong><br>${text.replace(/\n/g, '<br>')}`;
+
+    msg.innerHTML =
+        `<strong>${sender}:</strong><br>${text.replace(/\n/g,'<br>')}`;
+
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
 }
@@ -631,9 +633,17 @@ function setInterviewMode(mode) {
 function selectInterviewPath(path, element) {
     interviewPath = path;
 
-    // 💡 職種が選ばれたので、隠されていた特設ルームをパッと出現させる！
-    const inputRoom = document.getElementById('interview-input-room');
-    if (inputRoom) inputRoom.style.display = 'block';
+const inputRoom = document.getElementById('interview-input-room');
+
+if (inputRoom) {
+
+    if (interviewType === 'voice') {
+        inputRoom.style.display = 'none';
+    } else {
+        inputRoom.style.display = 'block';
+    }
+
+}
 
     // 💡 初期状態の「戻る」ボタンを隠す！
     const initialBack = document.getElementById('interview-initial-back');
@@ -642,8 +652,18 @@ function selectInterviewPath(path, element) {
     document.querySelectorAll('.pill-button-s').forEach(btn => btn.classList.remove('selected'));
     if (element) element.classList.add('selected');
 
-    const chatContainer = document.getElementById('chat-container');
-    if (chatContainer) chatContainer.innerHTML = ""; 
+const chatContainer = document.getElementById('chat-container');
+
+if (chatContainer) {
+
+    if (interviewType === 'voice') {
+        chatContainer.style.display = 'none';
+    } else {
+        chatContainer.style.display = 'block';
+        chatContainer.innerHTML = '';
+    }
+
+}
 
     const textarea = document.getElementById('interview-textarea');
     if (textarea) textarea.value = "";
@@ -1020,7 +1040,16 @@ function handleInterviewAction() {
 }
 
 async function finishInterview() {
+
+    const chatContainer = document.getElementById('chat-container');
+
+    if (chatContainer) {
+        chatContainer.style.display = 'block';
+        chatContainer.innerHTML = '';
+    }
+
     askQuestion("全ての面接練習が終了しました。これまでの対話に基づき、総合評価を作成しています...");
+
     try {
         const res = await fetch('/api/interview_feedback', {
             method: 'POST',
