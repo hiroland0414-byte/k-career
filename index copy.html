@@ -933,12 +933,12 @@ thinkingMsg.innerHTML = `
                 askQuestion(data.question);
                 deepDiveCount++; 
 
-                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで5.5秒間待ってマイクを安全に再起動
+                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで6.5秒間待ってマイクを安全に再起動
                 console.log("音声モード：AI発話中のため、マイク再起動を5.5秒待機します");
                 setTimeout(() => {
                     console.log("音声モード：マイクを安全に再起動しました");
                     try { recognition.start(); } catch(e){}
-                }, 5500);
+                }, 6500);
             } else {
                 addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
                 try { recognition.start(); } catch(e){}
@@ -966,13 +966,13 @@ thinkingMsg.innerHTML = `
             let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
             askQuestion(nextQ);
 
-            // テーマ移動時の質問の読み上げが終わるまで4.5秒待ってからマイクを起動
+            // テーマ移動時の質問の読み上げが終わるまで5.5秒待ってからマイクを起動
             setTimeout(() => {
     // 💡 現在も音声モード（interviewType === 'voice'）の場合のみ再開する
     if (interviewType === 'voice') { 
         try { recognition.start(); } catch(e){}
     }
-}, 4500);
+}, 5500);
         } else {
             isTrainingMode = false;
             finishInterview(); 
