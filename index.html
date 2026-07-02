@@ -1292,6 +1292,10 @@ async function submitES() {
             // 文字をセットして...
             resultContainer.innerHTML = `<div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>`;
             
+            const inputArea = document.getElementById('interview-input-room'); 
+    if (inputArea) {
+        inputArea.style.display = 'none';
+    }
             // ★PDF作成ボタンを有効化！
             // この行があれば、通信が完了したタイミングでボタンが押せるようになります
             if (pdfBtn) {
