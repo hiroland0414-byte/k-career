@@ -144,8 +144,16 @@ def interview_deepdive():
         return jsonify({"status": "success", "question": response.text})
 
     except Exception as e:
-        print(f"DeepDive Error: {repr(e)}")
-        return jsonify({"status": "error", "question": f"サーバーエラー: {str(e)}"})
+     import traceback
+
+     print("========== DeepDive Error ==========")
+     traceback.print_exc()
+     print("====================================")
+
+     return jsonify({
+        "status": "error",
+        "question": str(e)
+     })
 
 
 # --- 3. 面接トレーナー：最終総合フィードバック ---

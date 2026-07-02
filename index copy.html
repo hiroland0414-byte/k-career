@@ -175,6 +175,17 @@ input#user-nickname {
     }
 </script>
 <body>
+<div id="password-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#001A4D; z-index:99999; display:flex; justify-content:center; align-items:center; color:white; padding:20px; box-sizing:border-box;">
+        <div style="text-align:center;">
+            <h2>K-career 認証</h2>
+            <p>入室用パスワードを入力してください</p>
+            <input type="password" id="pass-input" style="padding:10px; border-radius:5px; border:none; width:80%; max-width:200px;">
+            <!-- ボタンの style属性の中に margin-top を追加 -->
+        <button onclick="verifyPassword()" style="padding:10px 20px; border-radius:5px; border:none; background:#FFF9C4; font-weight:bold; cursor:pointer; margin-top: 20px;">
+         ログイン
+        </button>
+        </div>
+    </div>
 <div id="future-result-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:1000; overflow-y:auto; padding:20px;">
     <div id="future-report-content" class="report-body">
         </div>
@@ -188,9 +199,8 @@ input#user-nickname {
     <div class="container" style="background:rgba(255,255,255,0.1); padding:30px; border-radius:20px; border:1px solid rgba(255,255,255,0.2);">
         <img src="logo.png" style="width: 90%; max-width: 400px; height: auto; margin-bottom: 25px; display: block; margin-left: auto; margin-right: auto; border-radius: 20px; overflow: hidden;">
         
-        <div class="input-hint" style="margin-bottom:25px; background:rgba(255,255,255,0.1); border-left:4px solid #FFEE58; color:#fff;">
-            <strong>ようこそ、K-careerへ！</strong><br>
-            このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリであなたの考えを整理してから対面での練習をおこなうと、より効果的です。一緒にがんばりましょう！<br>presented by Hiroshi Koyama
+        <div class="input-hint" style="margin-top: 10px;">
+            💡 このアプリは、医療職（診療放射線技師や看護師）を目指すみなさまのための、面接・ES添削パーソナル・トレーニングツールです。どこででも何度でも繰り返すことが出来ます。先ずはこのトレーニングアプリであなたの考えを整理してから対面での練習をおこなうと、より効果的です。一緒にがんばりましょう！<br>
         </div>
 
         <div id="start-area">
@@ -311,10 +321,7 @@ input#user-nickname {
             <button class="pill-button" onclick="setInterviewMode('text')">⌨️ 面接トレーニング（TEXT入力）</button>
         <div class="input-hint">
         ⌨️ <b>文字モード</b>：場所を選ばず、じっくり文章を考えながら練習できます。<br>
-        </div>
-            <button class="pill-button" onclick="setInterviewMode('voice')">🎤 面接トレーニング（音声入力）/開発中</button>
-        <div class="input-hint">
-        🎤 <b>音声モード</b>：K-career が声で質問します。本番さながらの緊張感で練習できます。 【開発中】<br>
+
         </div>
             <button class="btn-back" onclick="terminateTrainingMode(); showPage('page-top');" style="margin-top:20px;">戻る</button>
         </div>
@@ -933,12 +940,12 @@ thinkingMsg.innerHTML = `
                 askQuestion(data.question);
                 deepDiveCount++; 
 
-                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで6.5秒間待ってマイクを安全に再起動
+                // 🚨【音声専用ディレイ】AIが深掘り質問を喋り終えるまで5.5秒間待ってマイクを安全に再起動
                 console.log("音声モード：AI発話中のため、マイク再起動を5.5秒待機します");
                 setTimeout(() => {
                     console.log("音声モード：マイクを安全に再起動しました");
                     try { recognition.start(); } catch(e){}
-                }, 6500);
+                }, 5500);
             } else {
                 addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
                 try { recognition.start(); } catch(e){}
@@ -966,13 +973,13 @@ thinkingMsg.innerHTML = `
             let nextQ = (nextTheme === "自己PR") ? "丁寧な回答をありがとうございます。次に、あなたの自己PRをお願いします。" : "お話よく分かりました。最後に、ガクチカを教えてください。";
             askQuestion(nextQ);
 
-            // テーマ移動時の質問の読み上げが終わるまで5.5秒待ってからマイクを起動
+            // テーマ移動時の質問の読み上げが終わるまで4.5秒待ってからマイクを起動
             setTimeout(() => {
     // 💡 現在も音声モード（interviewType === 'voice'）の場合のみ再開する
     if (interviewType === 'voice') { 
         try { recognition.start(); } catch(e){}
     }
-}, 5500);
+}, 4500);
         } else {
             isTrainingMode = false;
             finishInterview(); 
@@ -2193,6 +2200,28 @@ function downloadES_PDF() {
     };
 
     html2pdf().set(opt).from(element).save();
+}
+
+// パスワード認証関数
+// ページ読み込み時に、過去の認証済み記録を確認
+window.onload = function() {
+    if (localStorage.getItem('isAuthorized') === 'true') {
+        // すでに認証済みならログイン画面を即座に非表示にする
+        document.getElementById('password-overlay').style.display = 'none';
+    }
+};
+
+function verifyPassword() {
+    const input = document.getElementById('pass-input').value;
+    const correctPassword = "kyoto2026"; // 任意のパスワード
+
+    if (input === correctPassword) {
+        // 正解ならlocalStorageに記録を保存
+        localStorage.setItem('isAuthorized', 'true');
+        document.getElementById('password-overlay').style.display = 'none';
+    } else {
+        alert("パスワードが違います");
+    }
 }
 
 </script>
