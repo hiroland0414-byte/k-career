@@ -306,7 +306,7 @@ input#user-nickname {
         <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
         <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
     </div>
-<button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" disabled>
+    <button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" style="margin-top:20px;" disabled>
     レポートをPDFで保存
 </button>
     <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:10px;">戻る</button>
@@ -710,86 +710,60 @@ async function handleInterviewActionText() {
         return; 
     }
 
-// ✨ 文字数クリア！ チャット画面への反映
+    // ✨ 文字数クリア！ チャット画面への反映
     addMsg("あなた", userText);
     totalTextPerTheme += userText + " "; 
     
-    // ★注意：ここで消すとエラー時に復元が困難です
-    // 一旦消さずに、通信成功時まで待つか、一時変数に退避させます。
-    const tempUserText = userText; 
-    if (inputArea) inputArea.value = ""; // 一旦空にする
+    if (inputArea) inputArea.value = "";
 
     if (charDisplay) {
         charDisplay.innerText = totalTextPerTheme.length;
         charDisplay.style.color = "#4CAF50"; 
     }
 
-    // 🤖 AIとの通信
+    // 🤖 AI（Pythonサーバー）との通信 ＆ 深掘り回数管理
     if (deepDiveCount < 3) {
-
-// 1. 送信前に、入力内容を一時変数に退避（ここが重要！）
-const tempUserText = document.getElementById('interview-textarea').value;
-
-// 2. インジケーター表示（既存）
-const thinkingMsg = document.createElement('div');
-thinkingMsg.id = "thinking-indicator";
+        const thinkingMsg = document.createElement('div');
+        thinkingMsg.id = "thinking-indicator";
 thinkingMsg.innerHTML = `
     <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
         ⏳ K-career 面接官が考え中...
     </div>`;
-chatContainer.appendChild(thinkingMsg);
-chatContainer.scrollTop = chatContainer.scrollHeight;
+        chatContainer.appendChild(thinkingMsg);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
 
-try {
-    const nicknameElement = document.getElementById('user-nickname');
-    const payload = {
-        path: interviewPath || "病院（技師）",
-        theme: interviewThemes[interviewStep] || "志望動機",
-        answer: totalTextPerTheme,
-        nickname: nicknameElement ? nicknameElement.value : "学生"
-    };
+        try {
+            const nicknameElement = document.getElementById('user-nickname');
+            const payload = {
+                path: interviewPath || "病院（技師）",
+                theme: interviewThemes[interviewStep] || "志望動機",
+                answer: totalTextPerTheme,
+                nickname: nicknameElement ? nicknameElement.value : "学生"
+            };
 
-    const res = await fetch('/api/interview_deepdive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+            const res = await fetch('/api/interview_deepdive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            const indicator = document.getElementById("thinking-indicator");
+            if (indicator) indicator.remove();
 
-    const data = await res.json();
-    const indicator = document.getElementById("thinking-indicator");
-    if (indicator) indicator.remove();
-
-    if (data.status === "success") {
-        // ★成功時のみ：入力欄をクリアする
-        const inputArea = document.getElementById('interview-textarea');
-        if (inputArea) inputArea.value = ""; 
-        
-        askQuestion(data.question);
-        deepDiveCount++; 
-
-        // 音声再起動の処理などはここへ
-    } else {
-        // ★失敗時：入力内容を復元する
-        const inputArea = document.getElementById('interview-textarea');
-        if (inputArea) inputArea.value = tempUserText; 
-        
-        addMsg("K-career 面接官", "すみません、通信が滞っています。もう一度送信してください。");
-    }
-} catch (e) {
-    const indicator = document.getElementById("thinking-indicator");
-    if (indicator) indicator.remove();
-    
-    // ★エラー時：入力内容を復元する
-    const inputArea = document.getElementById('interview-textarea');
-    if (inputArea) inputArea.value = tempUserText;
-    
-    addMsg("K-career 面接官", "通信エラーが発生しました。入力内容はそのままです。もう一度送信ボタンを押してください。");
-
-    // マイクの再開は行うが、土台の文字は維持する
- if (typeof safeStartRecognition === 'function') safeStartRecognition();
+            if (data.status === "success") {
+                askQuestion(data.question);
+                deepDiveCount++; 
+            } else {
+                addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
+            }
+        } catch (e) {
+            const indicator = document.getElementById("thinking-indicator");
+            if (indicator) indicator.remove();
+            addMsg("K-career 面接官", "通信エラーが発生しました。もう一度試してみてください。");
         }
-    }
-
+    } 
+    
     else {
         allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
         interviewStep++;
@@ -1308,16 +1282,11 @@ async function submitES() {
 
         const data = await res.json();
 
-    if (data.status === 'success') {
-            // 文字をセットして...
+        if (data.status === 'success') {
             resultContainer.innerHTML = `<div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>`;
-
-            // ★PDF作成ボタンを有効化！
-            // この行があれば、通信が完了したタイミングでボタンが押せるようになります
-            if (pdfBtn) {
-                pdfBtn.disabled = false;
-                pdfBtn.innerText = "レポートをPDFで保存"; // ボタンの文字も元に戻す（もし変更していた場合）
-            }
+            
+            // 添削完了したらPDFボタンを有効化！
+            if (pdfBtn) pdfBtn.disabled = false;
         } else {
             resultContainer.innerHTML = `<p>エラーが発生しました: ${data.evaluation}</p>`;
         }
@@ -2207,14 +2176,6 @@ function stopAllSpeechRecognition() {
         } catch(e) {
             console.log("音声停止エラー:", e);
         }
-    }
-}
-// レポート生成完了時にボタンを有効にする関数
-function enablePDFButton() {
-    const btn = document.getElementById('pdf-download-btn');
-    if (btn) {
-        btn.disabled = false;
-        btn.innerText = "レポートをPDFで保存";
     }
 }
 function downloadES_PDF() {
