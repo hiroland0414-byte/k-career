@@ -306,7 +306,7 @@ input#user-nickname {
         <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
         <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
     </div>
-<button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" disabled>
+    <button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" style="margin-top:20px;" disabled>
     レポートをPDFで保存
 </button>
     <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:10px;">戻る</button>
@@ -760,12 +760,9 @@ thinkingMsg.innerHTML = `
         } catch (e) {
             const indicator = document.getElementById("thinking-indicator");
             if (indicator) indicator.remove();
-            addMsg("K-career 面接官", "通信エラーが発生しました。詳細: " + e.message + "。入力内容はそのままです。もう一度送信ボタンを押してください。");
-            if (typeof safeStartRecognition === 'function') {
-        safeStartRecognition();
+            addMsg("K-career 面接官", "通信エラーが発生しました。もう一度試してみてください。");
         }
-       }
-      }
+    } 
     
     else {
         allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
@@ -1285,16 +1282,11 @@ async function submitES() {
 
         const data = await res.json();
 
-if (data.status === 'success') {
-            // 文字をセットして...
+        if (data.status === 'success') {
             resultContainer.innerHTML = `<div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>`;
             
-            // ★PDF作成ボタンを有効化！
-            // この行があれば、通信が完了したタイミングでボタンが押せるようになります
-            if (pdfBtn) {
-                pdfBtn.disabled = false;
-                pdfBtn.innerText = "レポートをPDFで保存"; // ボタンの文字も元に戻す（もし変更していた場合）
-            }
+            // 添削完了したらPDFボタンを有効化！
+            if (pdfBtn) pdfBtn.disabled = false;
         } else {
             resultContainer.innerHTML = `<p>エラーが発生しました: ${data.evaluation}</p>`;
         }
@@ -1366,7 +1358,7 @@ async function prepareNonVerbal() {
     }
 }
 
-
+// 4. 音声解析関数（音量データのみを収集・増幅版）
 // 4. 音声解析関数（GainNodeによる感度ブースト付き）
 async function startAudioAnalysis(stream) {
     if (typeof nvAudioCtx !== 'undefined' && nvAudioCtx && nvAudioCtx.state !== 'closed') {
@@ -1692,6 +1684,7 @@ function drawFaceGuideline() {
 
 // 🔥 状態管理フラグ
 let isProcessingAnswer = false;
+let lastFinalTranscript = "";
 
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1699,26 +1692,24 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     
     recognition.lang = 'ja-JP';
     recognition.interimResults = true; 
-    recognition.continuous = true; 
+    recognition.continuous = true;     
 
-    // 💡 マイク起動時（文字保護ロジックを追加）
+    // 💡 マイク起動時
     recognition.onstart = function() {
         console.log("マイク起動");
-        const inputArea = document.getElementById('interview-textarea');
-        if (inputArea && inputArea.value.trim() !== "") {
-            confirmedText = inputArea.value;
-        }
-        console.log("現在の土台文字 ➔", confirmedText);
     };
 
     // 🎤 音声認識メイン処理
     recognition.onresult = function(event) {
-        // 🔥 回答送信中は音声認識を無視
-        if (isProcessingAnswer) return;
+        // 🔥 回答送信中は音声認識を無視（深掘り飛び越し防止）
+        if (isProcessingAnswer) {
+            return;
+        }
 
         let finalTranscript = '';
         let interimTranscript = '';
 
+        // 確定テキストと未確定テキストを分離
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
                 finalTranscript += formatTranscript(event.results[i][0].transcript);
@@ -1729,16 +1720,6 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 
         const inputArea = document.getElementById('interview-textarea');
         if (!inputArea) return;
-
-        // 確定した文字を反映（土台 + 今回確定分）
-        if (finalTranscript !== '') {
-            confirmedText += finalTranscript;
-            inputArea.value = confirmedText;
-        } else {
-            // 未確定分は一時的に表示のみ反映
-            inputArea.value = confirmedText + interimTranscript;
-        }
-    };
 
         // ========================================
         // 🔥 重複防止チェック
@@ -1827,6 +1808,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             try { recognition.start(); } catch(e) {}
         }
     }; 
+}
 
 // ===================================================
 // 🎙️ マイク開始関数（用途に応じて使い分け）
@@ -2196,49 +2178,28 @@ function stopAllSpeechRecognition() {
         }
     }
 }
-
-// レポート生成完了時にボタンを有効にする関数
-function enablePDFButton() {
-    const btn = document.getElementById('pdf-download-btn');
-    if (btn) {
-        btn.disabled = false; // ボタンを活性化
-        btn.innerText = "レポートをPDFで保存";
-    }
-}
-
 function downloadES_PDF() {
     const element = document.getElementById('es-pdf-content');
-    const btn = document.getElementById('pdf-download-btn');
     
-    // まだ有効化されていない場合は何もしない
-    if (btn.disabled) return;
+    // 💡 内容がすべて表示されているか最終確認
+    if (document.getElementById('pdf-download-btn').disabled) return;
 
-    // ユーザーに処理中であることを伝える
-    btn.innerText = "PDF生成中...";
-    btn.disabled = true;
+    const opt = {
+        margin:       15,
+        filename:     'K-career_ES添削レポート.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        // ★重要：これを入れると、はみ出した分を次のページへ送ってくれます
+        pagebreak:    { mode: 'avoid-all', before: '#page2el' } 
+    };
 
-    // 0.5秒待機することで、ブラウザの描画を確実に完了させる
-    setTimeout(() => {
-        const opt = {
-            margin:       15,
-            filename:     'K-career_ES添削レポート.pdf',
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true,
-                scrollY: -window.scrollY // スクロール位置の影響を排除
-            },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            // mode: 'css' にすることで、CSSの指定に従って自然に改ページする
-            pagebreak:    { mode: 'css' } 
-        };
-
-        html2pdf().set(opt).from(element).save().then(() => {
-            // 保存完了後にボタンを元に戻す
-            btn.innerText = "レポートをPDFで保存";
-            btn.disabled = false;
-        });
-    }, 500);
+    html2pdf().set(opt).from(element).save();
 }
 
 // パスワード認証関数
