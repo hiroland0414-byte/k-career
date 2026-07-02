@@ -710,66 +710,86 @@ async function handleInterviewActionText() {
         return; 
     }
 
-    // ✨ 文字数クリア！ チャット画面への反映
+// ✨ 文字数クリア！ チャット画面への反映
     addMsg("あなた", userText);
     totalTextPerTheme += userText + " "; 
     
-    if (inputArea) inputArea.value = "";
+    // ★注意：ここで消すとエラー時に復元が困難です
+    // 一旦消さずに、通信成功時まで待つか、一時変数に退避させます。
+    const tempUserText = userText; 
+    if (inputArea) inputArea.value = ""; // 一旦空にする
 
     if (charDisplay) {
         charDisplay.innerText = totalTextPerTheme.length;
         charDisplay.style.color = "#4CAF50"; 
     }
 
-    // 🤖 AI（Pythonサーバー）との通信 ＆ 深掘り回数管理
+    // 🤖 AIとの通信
     if (deepDiveCount < 3) {
-        const thinkingMsg = document.createElement('div');
-        thinkingMsg.id = "thinking-indicator";
+
+// 1. 送信前に、入力内容を一時変数に退避（ここが重要！）
+const tempUserText = document.getElementById('interview-textarea').value;
+
+// 2. インジケーター表示（既存）
+const thinkingMsg = document.createElement('div');
+thinkingMsg.id = "thinking-indicator";
 thinkingMsg.innerHTML = `
     <div style="background-color: #fdfd96; color: #558B2F; font-weight: bold; padding: 8px; border-radius: 8px; border: 1px solid #76FF03; display: inline-block;">
         ⏳ K-career 面接官が考え中...
     </div>`;
-        chatContainer.appendChild(thinkingMsg);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+chatContainer.appendChild(thinkingMsg);
+chatContainer.scrollTop = chatContainer.scrollHeight;
 
-        try {
-            const nicknameElement = document.getElementById('user-nickname');
-            const payload = {
-                path: interviewPath || "病院（技師）",
-                theme: interviewThemes[interviewStep] || "志望動機",
-                answer: totalTextPerTheme,
-                nickname: nicknameElement ? nicknameElement.value : "学生"
-            };
+try {
+    const nicknameElement = document.getElementById('user-nickname');
+    const payload = {
+        path: interviewPath || "病院（技師）",
+        theme: interviewThemes[interviewStep] || "志望動機",
+        answer: totalTextPerTheme,
+        nickname: nicknameElement ? nicknameElement.value : "学生"
+    };
 
-            const res = await fetch('/api/interview_deepdive', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            
-            const indicator = document.getElementById("thinking-indicator");
-            if (indicator) indicator.remove();
+    const res = await fetch('/api/interview_deepdive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-            if (data.status === "success") {
-                askQuestion(data.question);
-                deepDiveCount++; 
-            } else {
-                addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
-            }
-    } catch (e) {
-         const indicator = document.getElementById("thinking-indicator");
-      if (indicator) indicator.remove();
-    
-    // 文字は消さず、エラーメッセージだけをチャットに追加
-      addMsg("K-career 面接官", "通信エラーが発生しました。詳細: " + e.message + "。入力内容はそのままです。もう一度送信ボタンを押してください。");
-    
-    // マイクの再開は行うが、土台の文字は維持する
-      if (typeof safeStartRecognition === 'function') {
-        safeStartRecognition();
+    const data = await res.json();
+    const indicator = document.getElementById("thinking-indicator");
+    if (indicator) indicator.remove();
+
+    if (data.status === "success") {
+        // ★成功時のみ：入力欄をクリアする
+        const inputArea = document.getElementById('interview-textarea');
+        if (inputArea) inputArea.value = ""; 
+        
+        askQuestion(data.question);
+        deepDiveCount++; 
+
+        // 音声再起動の処理などはここへ
+    } else {
+        // ★失敗時：入力内容を復元する
+        const inputArea = document.getElementById('interview-textarea');
+        if (inputArea) inputArea.value = tempUserText; 
+        
+        addMsg("K-career 面接官", "すみません、通信が滞っています。もう一度送信してください。");
     }
-}
-}    
+} catch (e) {
+    const indicator = document.getElementById("thinking-indicator");
+    if (indicator) indicator.remove();
+    
+    // ★エラー時：入力内容を復元する
+    const inputArea = document.getElementById('interview-textarea');
+    if (inputArea) inputArea.value = tempUserText;
+    
+    addMsg("K-career 面接官", "通信エラーが発生しました。入力内容はそのままです。もう一度送信ボタンを押してください。");
+
+    // マイクの再開は行うが、土台の文字は維持する
+ if (typeof safeStartRecognition === 'function') safeStartRecognition();
+        }
+    }
+
     else {
         allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
         interviewStep++;
