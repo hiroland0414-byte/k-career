@@ -2241,28 +2241,25 @@ function downloadES_PDF() {
     }, 500);
 }
 
-// パスワード認証関数
-// ページ読み込み時に、過去の認証済み記録を確認
-window.onload = function() {
-    if (localStorage.getItem('isAuthorized') === 'true') {
-        // すでに認証済みならログイン画面を即座に非表示にする
-        document.getElementById('password-overlay').style.display = 'none';
+// パスワード認証および初期化の全処理
+    function verifyPassword() {
+        const input = document.getElementById('pass-input').value;
+        const correctPassword = "kyoto2026"; 
+
+        if (input === correctPassword) {
+            localStorage.setItem('isAuthorized', 'true');
+            document.getElementById('password-overlay').style.display = 'none';
+        } else {
+            alert("パスワードが違います");
+        }
     }
-};
-
-function verifyPassword() {
-    const input = document.getElementById('pass-input').value;
-    const correctPassword = "kyoto2026"; // 任意のパスワード
-
-    if (input === correctPassword) {
-        // 正解ならlocalStorageに記録を保存
-        localStorage.setItem('isAuthorized', 'true');
-        document.getElementById('password-overlay').style.display = 'none';
-    } else {
-        alert("パスワードが違います");
-    }
-}
-
+    
+    // 2. ページ読み込み時の自動非表示処理
+    window.onload = function() {
+        if (localStorage.getItem('isAuthorized') === 'true') {
+            document.getElementById('password-overlay').style.display = 'none';
+        }
+    };
 </script>
 </body>
 </html>
