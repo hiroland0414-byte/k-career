@@ -306,7 +306,7 @@ input#user-nickname {
         <h2 style="color: #001A4D; border-bottom: 2px solid #001A4D; margin-top:0;">ES添削レポート</h2>
         <div id="es-evaluation-result" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"></div>
     </div>
-<button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" disabled>
+    <button id="pdf-download-btn" class="btn-next" onclick="downloadES_PDF()" style="margin-top:20px;" disabled>
     レポートをPDFで保存
 </button>
     <button class="btn-back" onclick="showPage('page-es-step2')" style="margin-top:10px;">戻る</button>
@@ -757,19 +757,13 @@ thinkingMsg.innerHTML = `
             } else {
                 addMsg("K-career 面接官", "すみません、少し考えがまとまりませんでした。もう一度送信していただけますか？");
             }
-    } catch (e) {
-         const indicator = document.getElementById("thinking-indicator");
-      if (indicator) indicator.remove();
+        } catch (e) {
+            const indicator = document.getElementById("thinking-indicator");
+            if (indicator) indicator.remove();
+            addMsg("K-career 面接官", "通信エラーが発生しました。もう一度試してみてください。");
+        }
+    } 
     
-    // 文字は消さず、エラーメッセージだけをチャットに追加
-      addMsg("K-career 面接官", "通信エラーが発生しました。詳細: " + e.message + "。入力内容はそのままです。もう一度送信ボタンを押してください。");
-    
-    // マイクの再開は行うが、土台の文字は維持する
-      if (typeof safeStartRecognition === 'function') {
-        safeStartRecognition();
-    }
-}
-}    
     else {
         allInterviewData += `【${interviewThemes[interviewStep]}】\n${totalTextPerTheme}\n\n`;
         interviewStep++;
@@ -1288,16 +1282,11 @@ async function submitES() {
 
         const data = await res.json();
 
-    if (data.status === 'success') {
-            // 文字をセットして...
+        if (data.status === 'success') {
             resultContainer.innerHTML = `<div class="report-content">${data.evaluation.replace(/\n/g, '<br>')}</div>`;
             
-            // ★PDF作成ボタンを有効化！
-            // この行があれば、通信が完了したタイミングでボタンが押せるようになります
-            if (pdfBtn) {
-                pdfBtn.disabled = false;
-                pdfBtn.innerText = "レポートをPDFで保存"; // ボタンの文字も元に戻す（もし変更していた場合）
-            }
+            // 添削完了したらPDFボタンを有効化！
+            if (pdfBtn) pdfBtn.disabled = false;
         } else {
             resultContainer.innerHTML = `<p>エラーが発生しました: ${data.evaluation}</p>`;
         }
@@ -2187,14 +2176,6 @@ function stopAllSpeechRecognition() {
         } catch(e) {
             console.log("音声停止エラー:", e);
         }
-    }
-}
-// レポート生成完了時にボタンを有効にする関数
-function enablePDFButton() {
-    const btn = document.getElementById('pdf-download-btn');
-    if (btn) {
-        btn.disabled = false;
-        btn.innerText = "レポートをPDFで保存";
     }
 }
 function downloadES_PDF() {
